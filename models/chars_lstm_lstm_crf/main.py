@@ -12,7 +12,7 @@ import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
 
-DATADIR = '../../data/connl2003'
+DATADIR = '../../data/example'
 
 # Logging
 Path('results').mkdir(exist_ok=True)
