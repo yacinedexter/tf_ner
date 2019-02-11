@@ -24,7 +24,7 @@ if __name__ == '__main__':
     # Get relevant glove vectors
     found = 0
     print('Reading GloVe file (may take a while)')
-    with Path('glove.840B.300d.txt').open() as f:
+    with Path('glove.840B.300d.txt/glove.840B.300d.txt').open() as f:
         for line_idx, line in enumerate(f):
             if line_idx % 100000 == 0:
                 print('- At line {}'.format(line_idx))
