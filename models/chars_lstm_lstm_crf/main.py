@@ -182,14 +182,14 @@ if __name__ == '__main__':
     # Params
     params = {
         'dim': 300,
-        'dim_chars': 100,
+        'dim_chars': 30,
         'dropout': 0.5,
         'num_oov_buckets': 1,
         'epochs': 25,
-        'batch_size': 20,
+        'batch_size': 10,
         'buffer': 15000,
-        'char_lstm_size': 25,
-        'lstm_size': 100,
+        'char_lstm_size': 50,
+        'lstm_size': 200,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
