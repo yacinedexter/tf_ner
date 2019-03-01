@@ -124,7 +124,7 @@ def model_fn(features, labels, mode, params):
     char_embeddings_cnn = masked_conv1d_and_max(
         char_embeddings, weights, params['filters'], params['kernel_size'])
         
-    concat cnn and lstm char embeddings
+    #concat cnn and lstm char embeddings
     char_embeddings = tf.concat([char_embeddings_cnn, char_embeddings_lstm], axis=-1)
 	
     # Word Embeddings
