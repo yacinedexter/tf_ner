@@ -124,8 +124,8 @@ def model_fn(features, labels, mode, params):
     char_embeddings_cnn = masked_conv1d_and_max(
         char_embeddings, weights, params['filters'], params['kernel_size'])
         
-    #concat cnn and lstm char embeddings
-    #char_embeddings = tf.concat([char_embeddings_cnn, char_embeddings_lstm], axis=-1)
+    concat cnn and lstm char embeddings
+    char_embeddings = tf.concat([char_embeddings_cnn, char_embeddings_lstm], axis=-1)
 	
     # Word Embeddings
     word_ids = vocab_words.lookup(words)#[[b'Peter', b'Blackburn'],[b'Yac', b'Amirat']] => [[b'0', b'1'],[b'2', b'3']]
@@ -135,10 +135,10 @@ def model_fn(features, labels, mode, params):
     word_embeddings = tf.nn.embedding_lookup(variable, word_ids)#[[b'0', b'1'],[b'2', b'3']] => [[b'variable[0]', b'variable[1]'],[b'variable[2]', b'variable[3]']] [2,2,300]
 
     # Concatenate Word and Char Embeddings
-    embeddings = tf.concat([word_embeddings, char_embeddings_lstm], axis=-1)#concat on the last dimension axis 100+300
+    embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)#concat on the last dimension axis 100+300
     embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)#50% de l'entrée
     
-    embeddings = tf.concat([embeddings, char_embeddings_cnn], axis=-1)
+    #embeddings = tf.concat([embeddings, char_embeddings_cnn], axis=-1)
     #embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
 	
     # LSTM
