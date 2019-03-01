@@ -139,7 +139,7 @@ def model_fn(features, labels, mode, params):
     embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)#50% de l'entrée
     
     embeddings = tf.concat([embeddings, char_embeddings_cnn], axis=-1)
-    embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
+    #embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
 	
     # LSTM
     t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major #put the word dim as first dimension. check batch-major VS time-major
