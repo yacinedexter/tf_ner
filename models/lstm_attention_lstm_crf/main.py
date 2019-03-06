@@ -126,7 +126,7 @@ def model_fn(features, labels, mode, params):
     #attention
     with tf.name_scope('Attention_layer'):
     	attention_output, alphas = attention(output, params['char_lstm_size']*2, time_major=True, return_alphas=True)
-    	#tf.summary.histogram('alphas', alphas)
+    	tf.summary.histogram('alphas', alphas)
     
     
     char_embeddings_lstm = tf.reshape(attention_output, [-1, dim_words, params['char_lstm_size']*2])# [2,2,50]
