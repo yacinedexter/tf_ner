@@ -135,7 +135,7 @@ def model_fn(features, labels, mode, params):
     word_embeddings = tf.nn.embedding_lookup(variable, word_ids)#[[b'0', b'1'],[b'2', b'3']] => [[b'variable[0]', b'variable[1]'],[b'variable[2]', b'variable[3]']] [2,2,300]
 
     # Concatenate Word and Char Embeddings
-    embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)#concat on the last dimension axis 100+300
+    embeddings = tf.concat([char_embeddings, word_embeddings], axis=-1)#concat on the last dimension axis 100+300
     embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)#50% de l'entrée
     
     #embeddings = tf.concat([embeddings, char_embeddings_cnn], axis=-1)
@@ -211,7 +211,7 @@ if __name__ == '__main__':
         'kernel_size': 3,        
         'buffer': 15000,#buffer_size: A tf.int64 scalar tf.Tensor, representing the number of elements from this dataset from which the new dataset will sample.
         'char_lstm_size': 50,#char lstm unit number (hidden state size)
-        'lstm_size': 300,#word lstm unit number (hidden state size)
+        'lstm_size': 200,#word lstm unit number (hidden state size)
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
