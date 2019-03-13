@@ -12,7 +12,7 @@ import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
 from masked_conv import masked_conv1d_and_max
-from attention import attention
+
 DATADIR = '../../data/example'
 
 # Logging
@@ -123,10 +123,7 @@ def model_fn(features, labels, mode, params):
     #                                 sequence_length=tf.reshape(nchars, [-1]))#we take last state
     output = tf.concat([output_fw, output_bw], axis=-1)#concat on the last D dimension of tensors 25+25
     
-    ##attention
-    #with tf.name_scope('Attention_layer'):
-    #	attention_output, alphas = attention(output, params['char_lstm_size']*2, time_major=True, return_alphas=True)
-    #	tf.summary.histogram('alphas', alphas)
+
     
     
     
@@ -138,8 +135,7 @@ def model_fn(features, labels, mode, params):
     char_embeddings_cnn = masked_conv1d_and_max(
         char_embeddings, weights, params['filters'], params['kernel_size'])
         
-    ##concat cnn and lstm char embeddings
-    #char_embeddings = tf.concat([char_embeddings_cnn, char_embeddings_lstm], axis=-1)
+
 	
     # Word Embeddings
     word_ids = vocab_words.lookup(words)#[[b'Peter', b'Blackburn'],[b'Yac', b'Amirat']] => [[b'0', b'1'],[b'2', b'3']]
@@ -239,11 +235,11 @@ if __name__ == '__main__':
         'num_oov_buckets': 1,#to give index for out of vocabulary
         'epochs': 25,
         'batch_size': 20,
-        'filters': 100,
+        'filters': 50,
         'kernel_size': 3,        
         'buffer': 15000,#buffer_size: A tf.int64 scalar tf.Tensor, representing the number of elements from this dataset from which the new dataset will sample.
-        'char_lstm_size': 50,#char lstm unit number (hidden state size)
-        'lstm_size': 200,#word lstm unit number (hidden state size)
+        'char_lstm_size': 25,#char lstm unit number (hidden state size)
+        'lstm_size': 100,#word lstm unit number (hidden state size)
         'ATTENTION_SIZE': 50,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
