@@ -113,14 +113,14 @@ def model_fn(features, labels, mode, params):
     lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
-    #_, (_, output_fw) = lstm_cell_fw(t, dtype=tf.float32,
-    #                                 sequence_length=tf.reshape(nchars, [-1]))#we take last state 
-    #_, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
-    #                                 sequence_length=tf.reshape(nchars, [-1]))#we take last state
-    output_fw,_ = lstm_cell_fw(t, dtype=tf.float32,
+    _, (_, output_fw) = lstm_cell_fw(t, dtype=tf.float32,
                                      sequence_length=tf.reshape(nchars, [-1]))#we take last state 
-    output_bw,_ = lstm_cell_bw(t, dtype=tf.float32,
+    _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
                                      sequence_length=tf.reshape(nchars, [-1]))#we take last state
+    #output_fw,_ = lstm_cell_fw(t, dtype=tf.float32,
+    #                                 sequence_length=tf.reshape(nchars, [-1]))#we take last state 
+    #output_bw,_ = lstm_cell_bw(t, dtype=tf.float32,
+    #                                 sequence_length=tf.reshape(nchars, [-1]))#we take last state
     output = tf.concat([output_fw, output_bw], axis=-1)#concat on the last D dimension of tensors 25+25
     
 
@@ -214,11 +214,11 @@ if __name__ == '__main__':
         'num_oov_buckets': 1,#to give index for out of vocabulary
         'epochs': 50,
         'batch_size': 20,
-        'filters': 200,
+        'filters': 128,
         'kernel_size': 3,        
         'buffer': 15000,#buffer_size: A tf.int64 scalar tf.Tensor, representing the number of elements from this dataset from which the new dataset will sample.
-        'char_lstm_size': 50,#char lstm unit number (hidden state size)
-        'lstm_size': 300,#word lstm unit number (hidden state size)
+        'char_lstm_size': 32,#char lstm unit number (hidden state size)
+        'lstm_size': 256,#word lstm unit number (hidden state size)
         'ATTENTION_SIZE': 50,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
