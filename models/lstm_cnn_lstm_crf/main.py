@@ -113,14 +113,14 @@ def model_fn(features, labels, mode, params):
     lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
-    _, (_, output_fw) = lstm_cell_fw(t, dtype=tf.float32,
-                                     sequence_length=tf.reshape(nchars, [-1]))#we take last state 
-    _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
-                                     sequence_length=tf.reshape(nchars, [-1]))#we take last state
-    #output_fw,_ = lstm_cell_fw(t, dtype=tf.float32,
+    #_, (_, output_fw) = lstm_cell_fw(t, dtype=tf.float32,
     #                                 sequence_length=tf.reshape(nchars, [-1]))#we take last state 
-    #output_bw,_ = lstm_cell_bw(t, dtype=tf.float32,
+    #_, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
     #                                 sequence_length=tf.reshape(nchars, [-1]))#we take last state
+    output_fw,_ = lstm_cell_fw(t, dtype=tf.float32,
+                                     sequence_length=tf.reshape(nchars, [-1]))#we take last state 
+    output_bw,_ = lstm_cell_bw(t, dtype=tf.float32,
+                                     sequence_length=tf.reshape(nchars, [-1]))#we take last state
     output = tf.concat([output_fw, output_bw], axis=-1)#concat on the last D dimension of tensors 25+25
     
 
