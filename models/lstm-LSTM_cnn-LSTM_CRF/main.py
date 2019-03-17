@@ -152,8 +152,8 @@ def model_fn(features, labels, mode, params):
 	
     # LSTM for lstm
     t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major #put the word dim as first dimension. check batch-major VS time-major
-    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
-    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
+    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size_lstm'])
+    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size_lstm'])
     lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
     output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=nwords)
     output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
@@ -167,8 +167,8 @@ def model_fn(features, labels, mode, params):
     
     # LSTM fro cnn
     t2 = tf.transpose(embeddings2, perm=[1, 0, 2])  # Need time-major #put the word dim as first dimension. check batch-major VS time-major
-    lstm_cell_fw2 = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
-    lstm_cell_bw2 = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
+    lstm_cell_fw2 = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size_cnn'])
+    lstm_cell_bw2 = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size_cnn'])
     lstm_cell_bw2 = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw2)
     output_fw2, _ = lstm_cell_fw(t2, dtype=tf.float32, sequence_length=nwords)
     output_bw2, _ = lstm_cell_bw(t2, dtype=tf.float32, sequence_length=nwords)
@@ -239,8 +239,8 @@ if __name__ == '__main__':
         'kernel_size': 3,        
         'buffer': 15000,#buffer_size: A tf.int64 scalar tf.Tensor, representing the number of elements from this dataset from which the new dataset will sample.
         'char_lstm_size': 50,#char lstm unit number (hidden state size)
-        'lstm_size': 250,#word lstm unit number (hidden state size)
-        'ATTENTION_SIZE': 50,
+        'lstm_size_lstm': 100,#word lstm unit number (hidden state size)
+	'lstm_size_cnn': 200,#word lstm unit number (hidden state size)
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
