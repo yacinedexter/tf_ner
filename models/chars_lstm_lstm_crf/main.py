@@ -11,7 +11,6 @@ import sys
 import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
-from masked_conv import masked_conv1d_and_max
 
 DATADIR = '../../data/example'
 
