@@ -123,7 +123,7 @@ def model_fn(features, labels, mode, params):
     
     exclude = ['lstm_fused_cell_1/kernel/Adam', 'lstm_fused_cell_1/bias/Adam', 'lstm_fused_cell/kernel/Adam_1', 'lstm_fused_cell/kernel/Adam', 'lstm_fused_cell/kernel', 'lstm_fused_cell/bias/Adam', 'global_step', 'dense/kernel/Adam_1', 'dense/bias/Adam_1', 'dense/bias/Adam',  'lstm_fused_cell_1/bias',   'lstm_fused_cell_1/kernel/Adam_1',  'crf/Adam', 'lstm_fused_cell/bias', 'dense/kernel',  'lstm_fused_cell_1/kernel','chars_embeddings/Adam', 'dense/kernel/Adam', 'crf', 'Variable', 'signal_early_stopping/STOP', 'beta1_power', 'dense/bias', 'chars_embeddings/Adam_1', 'beta2_power', 'lstm_fused_cell/bias/Adam_1', 'chars_embeddings', 'lstm_fused_cell_1/bias/Adam_1', 'crf/Adam_1', 'conv1d/bias', 'conv1d/kernel']
     variables_to_restore = tf.contrib.slim.get_variables_to_restore(exclude = exclude)
-    tf.train.init_from_checkpoint('model.ckpt-3',
+    tf.train.init_from_checkpoint('model.ckpt-9567',
     								{v.name.split(':')[0]: v for v in variables_to_restore})    
     								    
     char_embeddings = tf.concat([char_embeddings_cnn, char_embeddings_lstm], axis=-1)
