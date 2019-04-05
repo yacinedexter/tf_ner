@@ -8,6 +8,8 @@ import logging
 from pathlib import Path
 import sys
 
+import tensorflow_hub as hub
+
 import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
@@ -127,13 +129,19 @@ def model_fn(features, labels, mode, params):
     output = tf.concat([output_fw, output_bw], axis=-1)#concat on the last D dimension of tensors 25+25
     
     char_embeddings = tf.reshape(output, [-1,dim_words , params['char_lstm_size']*2])
+
+    #ELMO
+    elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=False)
+    word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
+                      signature="tokens",
+                      as_dict=True)["elmo"]
     
-    # Word Embeddings
-    word_ids = vocab_words.lookup(words)#[[b'Peter', b'Blackburn'],[b'Yac', b'Amirat']] => [[b'0', b'1'],[b'2', b'3']]
-    glove = np.load(params['glove'])['embeddings']  # np.array glove made of vocab words (reduces list)
-    variable = np.vstack([glove, [[0.] * params['dim']]])#concatenate on -1 axis, glove + [[0.]]
-    variable = tf.Variable(variable, dtype=tf.float32, trainable=False)
-    word_embeddings = tf.nn.embedding_lookup(variable, word_ids)#[[b'0', b'1'],[b'2', b'3']] => [[b'variable[0]', b'variable[1]'],[b'variable[2]', b'variable[3]']] [2,2,300]
+    ## Word Embeddings
+    #word_ids = vocab_words.lookup(words)#[[b'Peter', b'Blackburn'],[b'Yac', b'Amirat']] => [[b'0', b'1'],[b'2', b'3']]
+    #glove = np.load(params['glove'])['embeddings']  # np.array glove made of vocab words (reduces list)
+    #variable = np.vstack([glove, [[0.] * params['dim']]])#concatenate on -1 axis, glove + [[0.]]
+    #variable = tf.Variable(variable, dtype=tf.float32, trainable=False)
+    #word_embeddings = tf.nn.embedding_lookup(variable, word_ids)#[[b'0', b'1'],[b'2', b'3']] => [[b'variable[0]', b'variable[1]'],[b'variable[2]', b'variable[3]']] [2,2,300]
 
     # Concatenate Word and Char Embeddings
     embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)#concat on the last dimension axis 100+300
