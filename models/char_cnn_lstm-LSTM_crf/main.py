@@ -153,7 +153,7 @@ def model_fn(features, labels, mode, params):
     
 
     #ELMO
-    elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=True)
+    elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=False)
     word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
                       signature="tokens",
                       as_dict=True)["elmo"]
@@ -234,7 +234,7 @@ if __name__ == '__main__':
         'buffer': 15000,#buffer_size: A tf.int64 scalar tf.Tensor, representing the number of elements from this dataset from which the new dataset will sample.
         'char_lstm_size': 100,#char lstm unit number (hidden state size)
         'lstm_size': 200,#word lstm unit number (hidden state size)
-	'lstm2_size': 500,
+	'lstm2_size': 600,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
