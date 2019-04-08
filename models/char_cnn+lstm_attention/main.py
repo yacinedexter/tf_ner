@@ -8,6 +8,8 @@ import logging
 from pathlib import Path
 import sys
 
+import tensorflow_hub as hub
+
 import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
@@ -117,16 +119,15 @@ def model_fn(features, labels, mode, params):
                                      sequence_length=tf.reshape(nchars, [-1]))#we take last state 
     _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
                                      sequence_length=tf.reshape(nchars, [-1]))#we take last state
-    #output_fw,_ = lstm_cell_fw(t, dtype=tf.float32,
-    #                                 sequence_length=tf.reshape(nchars, [-1]))#we take last state 
-    #output_bw,_ = lstm_cell_bw(t, dtype=tf.float32,
-    #                                 sequence_length=tf.reshape(nchars, [-1]))#we take last state
+
+
+	
     output = tf.concat([output_fw, output_bw], axis=-1)#concat on the last D dimension of tensors 25+25
     
     char_embeddings_lstm = tf.reshape(output, [-1, params['char_lstm_size']*2])# [b,t,D]
     char_embeddings_lstm = tf.expand_dims(char_embeddings_lstm, -2)
 	
-	# Char 1d convolution
+    # Char 1d convolution
     weights = tf.sequence_mask(nchars)
     char_embeddings_cnn = masked_conv1d_and_max(
         char_embeddings, weights, params['filters'], params['kernel_size'])
@@ -159,6 +160,29 @@ def model_fn(features, labels, mode, params):
     t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major #put the word dim as first dimension. check batch-major VS time-major
     lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
+    output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=nwords)
+    output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
+    output = tf.concat([output_fw, output_bw], axis=-1)
+    output = tf.transpose(output, perm=[1, 0, 2])
+    output = tf.layers.dropout(output, rate=dropout, training=training)
+    
+
+
+    #ELMO
+    elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=False)
+    word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
+                      signature="tokens",
+                      as_dict=True)["elmo"]
+    
+    # Concatenate output LSTM1 and ELMO Embeddings, dropout 
+    embeddings = tf.concat([word_embeddings, output], axis=-1)
+    embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
+    
+    # LSTM 2
+    t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major
+    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm2_size'])
+    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm2_size'])
     lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
     output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=nwords)
     output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
@@ -221,12 +245,13 @@ if __name__ == '__main__':
         'dropout': 0.5,
         'num_oov_buckets': 1,#to give index for out of vocabulary
         'epochs': 25,
-        'batch_size': 32,
+        'batch_size': 20,
         'filters': 100,
         'kernel_size': 3,        
         'buffer': 15000,#buffer_size: A tf.int64 scalar tf.Tensor, representing the number of elements from this dataset from which the new dataset will sample.
         'char_lstm_size': 50,#char lstm unit number (hidden state size)
         'lstm_size': 250,#word lstm unit number (hidden state size)
+        'lstm2_size': 600,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
