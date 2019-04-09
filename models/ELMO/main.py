@@ -9,8 +9,7 @@ import tensorflow_hub as hub
 import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
-from masked_conv import masked_conv1d_and_max
-from attention import attention
+
 DATADIR = '../../data/example'
 
 # Logging
