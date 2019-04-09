@@ -132,6 +132,7 @@ def model_fn(features, labels, mode, params):
     word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
                       signature="tokens",
                       as_dict=True)["elmo"]
+    word_embeddings = tf.layers.dense(word_embeddings, 300)
     
     # Concatenate output LSTM1 and ELMO Embeddings, dropout 
     embeddings = tf.concat([word_embeddings, output], axis=-1)
@@ -207,7 +208,7 @@ if __name__ == '__main__':
         'filters': 50,
         'kernel_size': 3,
         'lstm_size': 100,
-        'lstm2_size': 600,
+        'lstm2_size': 500,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
