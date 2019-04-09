@@ -132,7 +132,7 @@ def model_fn(features, labels, mode, params):
     word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
                       signature="tokens",
                       as_dict=True)["elmo"]
-    word_embeddings = tf.layers.dense(word_embeddings, 300)
+    
     
     # Concatenate output LSTM1 and ELMO Embeddings, dropout 
     embeddings = tf.concat([word_embeddings, output], axis=-1)
@@ -147,6 +147,7 @@ def model_fn(features, labels, mode, params):
     output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
     output = tf.concat([output_fw, output_bw], axis=-1)
     output = tf.transpose(output, perm=[1, 0, 2])
+    output = tf.concat([word_embeddings, output], axis=-1)
     output = tf.layers.dropout(output, rate=dropout, training=training)
     
     
