@@ -94,101 +94,17 @@ def model_fn(features, labels, mode, params):
 
 
 	
-    # Char Embeddings
-    char_ids = vocab_chars.lookup(chars) #[[a,b][c,z]] => [[0,1][2,25]]
-    variable = tf.get_variable(
-        'chars_embeddings', [num_chars, params['dim_chars']], tf.float32)#dimension char embeddings [86,100]
-    char_embeddings = tf.nn.embedding_lookup(variable, char_ids)#char_ids [0,1] 0 va prendre le premier vecteur (variable [0,:]), donc [[0,1][2,25]] => [[variable[0,:],variable[1,:]][variable[2,:],variable[25,:]]]
-    char_embeddings = tf.layers.dropout(char_embeddings, rate=dropout,
-                                        training=training)#50% de l'entrée
-
-    # Char LSTM
-    dim_words = tf.shape(char_embeddings)[1]#max dim word (time len)(or number of chars max of a word)[nombre de phrase(batch),nombre de mots max,time len, dim char 100]
-    dim_chars = tf.shape(char_embeddings)[2]#dimension de char 100 [nombre de phrase(batch),nombre de mots max,time len ,dim char 100]
-    
-    flat = tf.reshape(char_embeddings, [-1, dim_chars, params['dim_chars']])#[?,max len word(or time len),100]
-    t = tf.transpose(flat, perm=[1, 0, 2])#[max len word(or time len),?,100] time major
-    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
-    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
-    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
-    _, (_, output_fw) = lstm_cell_fw(t, dtype=tf.float32,
-                                     sequence_length=tf.reshape(nchars, [-1]))#we take last state 
-    _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
-                                     sequence_length=tf.reshape(nchars, [-1]))#we take last state
-
-
-	
-    output = tf.concat([output_fw, output_bw], axis=-1)#concat on the last D dimension of tensors 25+25
-    
-    char_embeddings_lstm = tf.reshape(output, [-1, params['char_lstm_size']*2])# [b,t,D]
-    char_embeddings_lstm = tf.expand_dims(char_embeddings_lstm, -2)
-	
-    # Char 1d convolution
-    weights = tf.sequence_mask(nchars)
-    char_embeddings_cnn = masked_conv1d_and_max(
-        char_embeddings, weights, params['filters'], params['kernel_size'])
-    char_embeddings_cnn = tf.reshape(char_embeddings_cnn, [-1, params['filters']])
-    char_embeddings_cnn = tf.expand_dims(char_embeddings_cnn, -2)
-    
-    #concat cnn and lstm char embeddings
-    char_embeddings = tf.concat([char_embeddings_cnn, char_embeddings_lstm], axis=-2)
-    
-        
-    #attention
-    with tf.name_scope('Attention_layer'):
-    	attention_output, alphas = attention(char_embeddings, params['char_lstm_size']*2, time_major=False, return_alphas=True)
-    	tf.summary.histogram('alphas', alphas)
-    
-    char_embeddings = tf.reshape(attention_output, [-1, dim_words, params['char_lstm_size']*2])
-	
-    # Word Embeddings
-    word_ids = vocab_words.lookup(words)#[[b'Peter', b'Blackburn'],[b'Yac', b'Amirat']] => [[b'0', b'1'],[b'2', b'3']]
-    glove = np.load(params['glove'])['embeddings']  # np.array glove made of vocab words (reduces list)
-    variable = np.vstack([glove, [[0.] * params['dim']]])#concatenate on -1 axis, glove + [[0.]]
-    variable = tf.Variable(variable, dtype=tf.float32, trainable=False)
-    word_embeddings = tf.nn.embedding_lookup(variable, word_ids)#[[b'0', b'1'],[b'2', b'3']] => [[b'variable[0]', b'variable[1]'],[b'variable[2]', b'variable[3]']] [2,2,300]
-
-    # Concatenate Word and Char Embeddings
-    embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)#concat on the last dimension axis 100+300
-    embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)#50% de l'entrée
-	
-    # LSTM for lstm
-    t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major #put the word dim as first dimension. check batch-major VS time-major
-    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
-    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
-    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
-    output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=nwords)
-    output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
-    output = tf.concat([output_fw, output_bw], axis=-1)
-    output = tf.transpose(output, perm=[1, 0, 2])
-    output = tf.layers.dropout(output, rate=dropout, training=training)
-    
-
+   
 
     #ELMO
     elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=False)
     word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
                       signature="tokens",
                       as_dict=True)["elmo"]
-    
-    # Concatenate output LSTM1 and ELMO Embeddings, dropout 
-    embeddings = tf.concat([word_embeddings, output], axis=-1)
-    embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
-    
-    # LSTM 2
-    t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major
-    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm2_size'])
-    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm2_size'])
-    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
-    output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=nwords)
-    output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
-    output = tf.concat([output_fw, output_bw], axis=-1)
-    output = tf.transpose(output, perm=[1, 0, 2])
-    output = tf.layers.dropout(output, rate=dropout, training=training)
 	
 	
     # CRF
-    logits = tf.layers.dense(output, num_tags)#nn dense input : (output of bilstm), output dimension : same shape excpet last dim will be num of tags
+    logits = tf.layers.dense(word_embeddings, num_tags)#nn dense input : (output of bilstm), output dimension : same shape excpet last dim will be num of tags
     crf_params = tf.get_variable("crf", [num_tags, num_tags], dtype=tf.float32)#variable of crf pars matrix num_tags*num_tags
     pred_ids, _ = tf.contrib.crf.crf_decode(logits, crf_params, nwords)#decode_tags: A [batch_size, max_seq_len] matrix, with dtype tf.int32. Contains the highest scoring tag indices.
     																	#potentials(logits): A [batch_size, max_seq_len, num_tags] tensor of unary potentials.
@@ -241,13 +157,8 @@ if __name__ == '__main__':
         'dropout': 0.5,
         'num_oov_buckets': 1,#to give index for out of vocabulary
         'epochs': 25,
-        'batch_size': 20,
-        'filters': 100,
-        'kernel_size': 3,        
+        'batch_size': 20,      
         'buffer': 15000,#buffer_size: A tf.int64 scalar tf.Tensor, representing the number of elements from this dataset from which the new dataset will sample.
-        'char_lstm_size': 50,#char lstm unit number (hidden state size)
-        'lstm_size': 200,#word lstm unit number (hidden state size)
-        'lstm2_size': 400,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
