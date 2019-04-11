@@ -243,7 +243,7 @@ if __name__ == '__main__':
         'dim': 300,#dimension word embedding glove
         'dim_chars': 100,#dimension char enbedding (char lstm input)
         'dropout': 0.5,
-192        'num_oov_buckets': 1,#to give index for out of vocabulary
+        'num_oov_buckets': 1,#to give index for out of vocabulary
         'epochs': 25,
         'batch_size': 20,
         'filters': 64,
