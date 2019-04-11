@@ -111,7 +111,7 @@ def model_fn(features, labels, mode, params):
     _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
                                      sequence_length=tf.reshape(nchars, [-1]))
     output = tf.concat([output_fw, output_bw], axis=-1)
-    char_embeddings = tf.reshape(output, [-1, dim_words, params['char_lstm_size']])
+    char_embeddings = tf.reshape(output, [-1, dim_words, 2*params['char_lstm_size']])
     
 
     # Word Embeddings
