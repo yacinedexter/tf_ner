@@ -12,6 +12,8 @@ import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
 
+from elmo import weight_layers
+
 DATADIR = '../../data/example'
 
 # Logging
@@ -109,7 +111,8 @@ def model_fn(features, labels, mode, params):
     _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
                                      sequence_length=tf.reshape(nchars, [-1]))
     output = tf.concat([output_fw, output_bw], axis=-1)
-    char_embeddings = tf.reshape(output, [-1, dim_words, 50])
+    char_embeddings = tf.reshape(output, [-1, dim_words, params['char_lstm_size']])
+    
 
     # Word Embeddings
     word_ids = vocab_words.lookup(words)
@@ -117,10 +120,27 @@ def model_fn(features, labels, mode, params):
     variable = np.vstack([glove, [[0.] * params['dim']]])
     variable = tf.Variable(variable, dtype=tf.float32, trainable=False)
     word_embeddings = tf.nn.embedding_lookup(variable, word_ids)
+    
+    layers = []
+    layers.append(char_embeddings)
+    layers.append(word_embeddings)
+    
+    lm_embeddings = tf.concat(
+                              [tf.expand_dims(t, axis=1) for t in layers], axis=1)
+    
+    weights = tf.sequence_mask(nwords)
+    
+
+    bilm_ops = {'lm_embeddings':lm_embeddings,
+                'mask': weights}
+    
+    
 
     # Concatenate Word and Char Embeddings
     embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)
     embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
+    
+    
 
     # LSTM
     t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major
@@ -188,8 +208,8 @@ if __name__ == '__main__':
         'epochs': 25,
         'batch_size': 20,
         'buffer': 15000,
-        'char_lstm_size': 25,
-        'lstm_size': 100,
+        'char_lstm_size': 150,
+        'lstm_size': 300,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
