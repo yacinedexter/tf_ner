@@ -135,8 +135,7 @@ def model_fn(features, labels, mode, params):
                 'mask': weights}
     
     elmo_input = weight_layers(
-        'elmo_input', question_embeddings_op, l2_coef=1.0, do_layer_norm=True,
-        use_top_only=False)    
+        'elmo_input', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
                                      
 
     ## Concatenate Word and Char Embeddings
