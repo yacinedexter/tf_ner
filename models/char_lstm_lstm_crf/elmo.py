@@ -105,5 +105,5 @@ def weight_layers(name, bilm_ops, l2_coef=None,
         weighted_lm_layers = sum_pieces * gamma
 
         ret = {'weighted_op': weighted_lm_layers, 'regularization_op': reg}
-
-return ret
+        
+    return ret
