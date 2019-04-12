@@ -13,6 +13,7 @@ import tensorflow as tf
 from tf_metrics import precision, recall, f1
 
 from masked_conv import masked_conv1d_and_max
+from elmo import weight_layers
 
 DATADIR = '../../data/example'
 
@@ -109,10 +110,25 @@ def model_fn(features, labels, mode, params):
     variable = np.vstack([glove, [[0.] * params['dim']]])
     variable = tf.Variable(variable, dtype=tf.float32, trainable=False)
     word_embeddings = tf.nn.embedding_lookup(variable, word_ids)
+    
+    layers = []
+    layers.append(char_embeddings)
+    layers.append(word_embeddings)
+    
+    lm_embeddings = tf.concat(
+                              [tf.expand_dims(t, axis=1) for t in layers], axis=1)
+    
+    weights = tf.sequence_mask(nwords)
+    
 
-    # Concatenate Word and Char Embeddings
-    embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)
-    embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
+    bilm_ops = {'lm_embeddings':lm_embeddings,
+                'mask': weights}
+    
+    elmo_input = weight_layers(
+        'elmo_input', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
+
+    
+    embeddings = tf.layers.dropout(elmo_input['weighted_op'], rate=dropout, training=training)    
 
     # LSTM
     t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major
