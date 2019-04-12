@@ -12,6 +12,8 @@ import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
 
+from elmo import weight_layers
+
 DATADIR = '../../data/example'
 
 # Logging
@@ -109,7 +111,8 @@ def model_fn(features, labels, mode, params):
     _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
                                      sequence_length=tf.reshape(nchars, [-1]))
     output = tf.concat([output_fw, output_bw], axis=-1)
-    char_embeddings = tf.reshape(output, [-1, dim_words, 50])
+    char_embeddings = tf.reshape(output, [-1, dim_words, 2*params['char_lstm_size']])
+    
 
     # Word Embeddings
     word_ids = vocab_words.lookup(words)
@@ -117,11 +120,13 @@ def model_fn(features, labels, mode, params):
     variable = np.vstack([glove, [[0.] * params['dim']]])
     variable = tf.Variable(variable, dtype=tf.float32, trainable=False)
     word_embeddings = tf.nn.embedding_lookup(variable, word_ids)
-
+    
+    
     # Concatenate Word and Char Embeddings
     embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)
     embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
-
+    
+    
     # LSTM
     t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major
     lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
@@ -131,7 +136,26 @@ def model_fn(features, labels, mode, params):
     output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
     output = tf.concat([output_fw, output_bw], axis=-1)
     output = tf.transpose(output, perm=[1, 0, 2])
-    output = tf.layers.dropout(output, rate=dropout, training=training)
+    #output = tf.layers.dropout(output, rate=dropout, training=training)
+    
+    
+    layers = []
+    layers.append(char_embeddings)
+    layers.append(output)
+    
+    lm_embeddings = tf.concat(
+                              [tf.expand_dims(t, axis=1) for t in layers], axis=1)
+    
+    weights = tf.sequence_mask(nwords)
+    
+
+    bilm_ops = {'lm_embeddings':lm_embeddings,
+                'mask': weights}
+    
+    weight_sum = weight_layers(
+        'elmo_input', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
+                                     
+    output = tf.layers.dropout(weight_sum['weighted_op'], rate=dropout, training=training)    
 
     # CRF
     logits = tf.layers.dense(output, num_tags)
@@ -186,10 +210,10 @@ if __name__ == '__main__':
         'dropout': 0.5,
         'num_oov_buckets': 1,
         'epochs': 25,
-        'batch_size': 20,
+        'batch_size': 32,
         'buffer': 15000,
-        'char_lstm_size': 25,
-        'lstm_size': 100,
+        'char_lstm_size': 150,
+        'lstm_size': 300,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
