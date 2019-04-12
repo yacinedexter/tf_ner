@@ -137,9 +137,6 @@ def model_fn(features, labels, mode, params):
     elmo_input = weight_layers(
         'elmo_input', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
                                      
-
-    ## Concatenate Word and Char Embeddings
-    #embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)
     embeddings = tf.layers.dropout(elmo_input['weighted_op'], rate=dropout, training=training)
     
     
