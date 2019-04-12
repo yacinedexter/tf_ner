@@ -208,7 +208,7 @@ if __name__ == '__main__':
         'dropout': 0.5,
         'num_oov_buckets': 1,
         'epochs': 25,
-        'batch_size': 20,
+        'batch_size': 32,
         'buffer': 15000,
         'char_lstm_size': 150,
         'lstm_size': 300,
