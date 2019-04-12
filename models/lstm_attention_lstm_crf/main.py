@@ -115,36 +115,31 @@ def model_fn(features, labels, mode, params):
     lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
-    _, (_, output_fw) = lstm_cell_fw(t, dtype=tf.float32,
-                                     sequence_length=tf.reshape(nchars, [-1]))#we take last state 
-    _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
-                                     sequence_length=tf.reshape(nchars, [-1]))#we take last state
-    #output_fw,_ = lstm_cell_fw(t, dtype=tf.float32,
+    #_, (_, output_fw) = lstm_cell_fw(t, dtype=tf.float32,
     #                                 sequence_length=tf.reshape(nchars, [-1]))#we take last state 
-    #output_bw,_ = lstm_cell_bw(t, dtype=tf.float32,
+    #_, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
     #                                 sequence_length=tf.reshape(nchars, [-1]))#we take last state
+    output_fw,_ = lstm_cell_fw(t, dtype=tf.float32,
+                                     sequence_length=tf.reshape(nchars, [-1]))#we take last state 
+    output_bw,_ = lstm_cell_bw(t, dtype=tf.float32,
+                                     sequence_length=tf.reshape(nchars, [-1]))#we take last state
     output = tf.concat([output_fw, output_bw], axis=-1)#concat on the last D dimension of tensors 25+25
     
-    ##attention
-    #with tf.name_scope('Attention_layer'):
-    #	attention_output, alphas = attention(output, params['char_lstm_size']*2, time_major=True, return_alphas=True)
-    #	tf.summary.histogram('alphas', alphas)
+    #attention
+    with tf.name_scope('Attention_layer'):
+    	attention_output, alphas = attention(output, params['char_lstm_size']*2, time_major=True, return_alphas=True)
+    	tf.summary.histogram('alphas', alphas)
     
     
     char_embeddings_lstm = tf.reshape(output, [-1, dim_words, params['char_lstm_size']*2])# [2,2,50]
 	
-    ## Word Embeddings
-    #word_ids = vocab_words.lookup(words)#[[b'Peter', b'Blackburn'],[b'Yac', b'Amirat']] => [[b'0', b'1'],[b'2', b'3']]
-    #glove = np.load(params['glove'])['embeddings']  # np.array glove made of vocab words (reduces list)
-    #variable = np.vstack([glove, [[0.] * params['dim']]])#concatenate on -1 axis, glove + [[0.]]
-    #variable = tf.Variable(variable, dtype=tf.float32, trainable=False)
-    #word_embeddings = tf.nn.embedding_lookup(variable, word_ids)#[[b'0', b'1'],[b'2', b'3']] => [[b'variable[0]', b'variable[1]'],[b'variable[2]', b'variable[3]']] [2,2,300]
+    # Word Embeddings
+    word_ids = vocab_words.lookup(words)#[[b'Peter', b'Blackburn'],[b'Yac', b'Amirat']] => [[b'0', b'1'],[b'2', b'3']]
+    glove = np.load(params['glove'])['embeddings']  # np.array glove made of vocab words (reduces list)
+    variable = np.vstack([glove, [[0.] * params['dim']]])#concatenate on -1 axis, glove + [[0.]]
+    variable = tf.Variable(variable, dtype=tf.float32, trainable=False)
+    word_embeddings = tf.nn.embedding_lookup(variable, word_ids)#[[b'0', b'1'],[b'2', b'3']] => [[b'variable[0]', b'variable[1]'],[b'variable[2]', b'variable[3]']] [2,2,300]
 
-    #ELMO
-    elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=False)
-    word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
-                           signature="tokens",
-			   as_dict=True)["elmo"]
     
     # Concatenate Word and Char Embeddings
     embeddings = tf.concat([word_embeddings, char_embeddings_lstm], axis=-1)#concat on the last dimension axis 100+300
