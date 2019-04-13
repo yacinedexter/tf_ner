@@ -134,10 +134,10 @@ def model_fn(features, labels, mode, params):
     bilm_ops = {'lm_embeddings':lm_embeddings,
                 'mask': weights}
     
-    elmo_input = weight_layers(
+    word_input = weight_layers(
         'elmo_input', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
                                      
-    embeddings = tf.layers.dropout(elmo_input['weighted_op'], rate=dropout, training=training)
+    embeddings = tf.layers.dropout(word_input['weighted_op'], rate=dropout, training=training)
     
     
 
@@ -151,6 +151,26 @@ def model_fn(features, labels, mode, params):
     output = tf.concat([output_fw, output_bw], axis=-1)
     output = tf.transpose(output, perm=[1, 0, 2])
     output = tf.layers.dropout(output, rate=dropout, training=training)
+    
+    
+    layers = []
+    layers.append(char_embeddings)
+    layers.append(output)
+    
+    lm_embeddings = tf.concat(
+                              [tf.expand_dims(t, axis=1) for t in layers], axis=1)
+    
+    weights = tf.sequence_mask(nwords)
+    
+
+    bilm_ops = {'lm_embeddings':lm_embeddings,
+                'mask': weights}
+    
+    weight_sum = weight_layers(
+        'elmo_input', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
+                                     
+    output = tf.layers.dropout(weight_sum['weighted_op'], rate=dropout, training=training)     
+    
 
     # CRF
     logits = tf.layers.dense(output, num_tags)
