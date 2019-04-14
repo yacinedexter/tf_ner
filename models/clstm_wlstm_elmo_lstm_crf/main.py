@@ -1,5 +1,5 @@
 
-"""GloVe Embeddings + chars conv and max pooling + bi-LSTM + CRF"""
+"""GloVe Embeddings + chars lstm + bi-LSTM1 + ELMO + bi-LSTM2 + CRF"""
 
 __author__ = "Guillaume Genthial"
 
