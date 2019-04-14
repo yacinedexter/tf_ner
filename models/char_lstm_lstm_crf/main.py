@@ -154,7 +154,7 @@ def model_fn(features, labels, mode, params):
     
     
     layers = []
-    layers.append(char_embeddings)
+    layers.append(word_input['weighted_op'])
     layers.append(output)
     
     lm_embeddings = tf.concat(
