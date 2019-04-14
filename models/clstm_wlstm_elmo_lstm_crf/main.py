@@ -15,7 +15,6 @@ import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
 
-from masked_conv import masked_conv1d_and_max
 
 DATADIR = '../../data/example'
 
@@ -96,15 +95,25 @@ def model_fn(features, labels, mode, params):
     # Char Embeddings
     char_ids = vocab_chars.lookup(chars)
     variable = tf.get_variable(
-        'chars_embeddings', [num_chars + 1, params['dim_chars']], tf.float32)
+        'chars_embeddings', [num_chars, params['dim_chars']], tf.float32)
     char_embeddings = tf.nn.embedding_lookup(variable, char_ids)
     char_embeddings = tf.layers.dropout(char_embeddings, rate=dropout,
                                         training=training)
 
-    # Char 1d convolution
-    weights = tf.sequence_mask(nchars)
-    char_embeddings = masked_conv1d_and_max(
-        char_embeddings, weights, params['filters'], params['kernel_size'])
+    # Char LSTM
+    dim_words = tf.shape(char_embeddings)[1]
+    dim_chars = tf.shape(char_embeddings)[2]
+    flat = tf.reshape(char_embeddings, [-1, dim_chars, params['dim_chars']])
+    t = tf.transpose(flat, perm=[1, 0, 2])
+    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
+    _, (_, output_fw) = lstm_cell_fw(t, dtype=tf.float32,
+                                     sequence_length=tf.reshape(nchars, [-1]))
+    _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
+                                     sequence_length=tf.reshape(nchars, [-1]))
+    output = tf.concat([output_fw, output_bw], axis=-1)
+    char_embeddings = tf.reshape(output, [-1, dim_words, 2*params['char_lstm_size']])
 
     # Word Embeddings
     word_ids = vocab_words.lookup(words)
@@ -207,9 +216,8 @@ if __name__ == '__main__':
         'epochs': 25,
         'batch_size': 20,
         'buffer': 15000,
-        'filters': 50,
-        'kernel_size': 3,
-        'lstm_size': 100,
+        'char_lstm_size': 100,
+        'lstm_size': 150,
         'lstm2_size': 500,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
