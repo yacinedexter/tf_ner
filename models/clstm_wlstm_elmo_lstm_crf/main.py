@@ -216,7 +216,7 @@ if __name__ == '__main__':
         'epochs': 25,
         'batch_size': 32,
         'buffer': 15000,
-        'char_lstm_size': 50,
+        'char_lstm_size': 150,
         'lstm_size': 150,
         'lstm2_size': 400,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
