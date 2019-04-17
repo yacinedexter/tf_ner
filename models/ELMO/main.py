@@ -1,3 +1,8 @@
+
+"""GloVe Embeddings + chars lstm + bi-LSTM1 + ELMO + bi-LSTM2 + CRF"""
+
+__author__ = "Guillaume Genthial"
+
 import functools
 import json
 import logging
@@ -9,6 +14,7 @@ import tensorflow_hub as hub
 import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
+
 
 DATADIR = '../../data/example'
 
@@ -33,7 +39,7 @@ def parse_fn(line_words, line_tags):
     lengths = [len(c) for c in chars]
     max_len = max(lengths)
     chars = [c + [b'<pad>'] * (max_len - l) for c, l in zip(chars, lengths)]
-    return ((words, len(words)), (chars, lengths)), tags #(([b'Nadim', b'Ladki'], 2), ([[b'N', b'a', b'd', b'i', b'm'], [b'L', b'a', b'd', b'k', b'i']], [5, 5])) [b'B-PER', b'I-PER']
+    return ((words, len(words)), (chars, lengths)), tags
 
 
 def generator_fn(words, tags):
@@ -44,9 +50,9 @@ def generator_fn(words, tags):
 
 def input_fn(words, tags, params=None, shuffle_and_repeat=False):
     params = params if params is not None else {}
-    shapes = ((([None], ()),               # (words, nwords)(([b'Nadim', b'Ladki'], 2)
-               ([None, None], [None])),    # (chars, nchars) ([[b'N', b'a', b'd', b'i', b'm'], [b'L', b'a', b'd', b'k', b'i']], [5, 5]))
-              [None])                      # tags [b'B-PER', b'I-PER']
+    shapes = ((([None], ()),               # (words, nwords)
+               ([None, None], [None])),    # (chars, nchars)
+              [None])                      # tags
     types = (((tf.string, tf.int32),
               (tf.string, tf.int32)),
              tf.string)
@@ -58,15 +64,11 @@ def input_fn(words, tags, params=None, shuffle_and_repeat=False):
         output_shapes=shapes, output_types=types)
 
     if shuffle_and_repeat:
-        dataset = dataset.shuffle(params['buffer']).repeat(params['epochs'])#here i can add seed
+        dataset = dataset.shuffle(params['buffer']).repeat(params['epochs'])
 
     dataset = (dataset
-               .padded_batch(params.get('batch_size', 20), shapes, defaults)#get batch size value, if not found use 20 as default
+               .padded_batch(params.get('batch_size', 20), shapes, defaults)
                .prefetch(1))
-    #(((array([[b'Peter', b'Blackburn'],[b'Yac', b'Amirat']], dtype=object), array([2, 2], dtype=int32)), 
-    #(array([[[b'P', b'e', b't', b'e', b'r', b'<pad>', b'<pad>', b'<pad>',b'<pad>'], [b'B', b'l', b'a', b'c', b'k', b'b', b'u', b'r', b'n']],
-	#   [[b'Y', b'a', b'c', b'<pad>', b'<pad>', b'<pad>', b'<pad>',b'<pad>', b'<pad>'],[b'A', b'm', b'i', b'r', b'a', b't', b'<pad>', b'<pad>',b'<pad>']]], dtype=object), array([[5, 9],[3, 6]], dtype=int32))), 	
-	#array([[b'B-PER', b'I-PER'],[b'B-PER', b'I-PER']], dtype=object))
     return dataset
 
 
@@ -77,9 +79,8 @@ def model_fn(features, labels, mode, params):
                     (features['chars'], features['nchars']))
 
     # Read vocabs and inputs
-    (words, nwords), (chars, nchars) = features
-    
     dropout = params['dropout']
+    (words, nwords), (chars, nchars) = features
     training = (mode == tf.estimator.ModeKeys.TRAIN)
     vocab_words = tf.contrib.lookup.index_table_from_file(
         params['words'], num_oov_buckets=params['num_oov_buckets'])
@@ -91,28 +92,63 @@ def model_fn(features, labels, mode, params):
     with Path(params['chars']).open() as f:
         num_chars = sum(1 for _ in f) + params['num_oov_buckets']
 
+    # Char Embeddings
+    char_ids = vocab_chars.lookup(chars)
+    variable = tf.get_variable(
+        'chars_embeddings', [num_chars, params['dim_chars']], tf.float32)
+    char_embeddings = tf.nn.embedding_lookup(variable, char_ids)
+    char_embeddings = tf.layers.dropout(char_embeddings, rate=dropout,
+                                        training=training)
 
-	
-   
+    # Char LSTM
+    dim_words = tf.shape(char_embeddings)[1]
+    dim_chars = tf.shape(char_embeddings)[2]
+    flat = tf.reshape(char_embeddings, [-1, dim_chars, params['dim_chars']])
+    t = tf.transpose(flat, perm=[1, 0, 2])
+    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
+    _, (_, output_fw) = lstm_cell_fw(t, dtype=tf.float32,
+                                     sequence_length=tf.reshape(nchars, [-1]))
+    _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
+                                     sequence_length=tf.reshape(nchars, [-1]))
+    output = tf.concat([output_fw, output_bw], axis=-1)
+    char_embeddings = tf.reshape(output, [-1, dim_words, 2*params['char_lstm_size']])
+
 
     #ELMO
     elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=False)
     word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
                       signature="tokens",
-                      as_dict=True)["elmo"]
+                      as_dict=True)["word_emb"]
+    
 	
-	
-    # CRF
-    logits = tf.layers.dense(word_embeddings, num_tags)#nn dense input : (output of bilstm), output dimension : same shape excpet last dim will be num of tags
-    crf_params = tf.get_variable("crf", [num_tags, num_tags], dtype=tf.float32)#variable of crf pars matrix num_tags*num_tags
-    pred_ids, _ = tf.contrib.crf.crf_decode(logits, crf_params, nwords)#decode_tags: A [batch_size, max_seq_len] matrix, with dtype tf.int32. Contains the highest scoring tag indices.
-    																	#potentials(logits): A [batch_size, max_seq_len, num_tags] tensor of unary potentials.
+    # Concatenate Word and Char Embeddings
+    embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)
+    embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
 
-    if mode == tf.estimator.ModeKeys.PREDICT:#prediction
+    # LSTM 1
+    t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major
+    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
+    output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=nwords)
+    output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
+    output = tf.concat([output_fw, output_bw], axis=-1)
+    output = tf.transpose(output, perm=[1, 0, 2])
+    output = tf.layers.dropout(output, rate=dropout, training=training)    
+ 
+    
+    # CRF
+    logits = tf.layers.dense(output, num_tags)
+    crf_params = tf.get_variable("crf", [num_tags, num_tags], dtype=tf.float32)
+    pred_ids, _ = tf.contrib.crf.crf_decode(logits, crf_params, nwords)
+
+    if mode == tf.estimator.ModeKeys.PREDICT:
         # Predictions
         reverse_vocab_tags = tf.contrib.lookup.index_to_string_table_from_file(
             params['tags'])
-        pred_strings = reverse_vocab_tags.lookup(tf.to_int64(pred_ids))#indices = tf.constant([1, 5], tf.int64) => ["lake", "UNKNOWN"]
+        pred_strings = reverse_vocab_tags.lookup(tf.to_int64(pred_ids))
         predictions = {
             'pred_ids': pred_ids,
             'tags': pred_strings
@@ -120,30 +156,30 @@ def model_fn(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)
     else:
         # Loss
-        vocab_tags = tf.contrib.lookup.index_table_from_file(params['tags'])#get tags index from file
-        tags = vocab_tags.lookup(labels)#replace lables by thier indexes
+        vocab_tags = tf.contrib.lookup.index_table_from_file(params['tags'])
+        tags = vocab_tags.lookup(labels)
         log_likelihood, _ = tf.contrib.crf.crf_log_likelihood(
-            logits, tags, nwords, crf_params)#calculate log_likelihood given the real tags, return: A [batch_size] Tensor containing the log-likelihood of each example, given the sequence of tag indices.
-        loss = tf.reduce_mean(-log_likelihood)#Computes the mean of elements across dimensions of a tensor. x = tf.constant([[1., 1.], [2., 2.]]) tf.reduce_mean(x)  # 1.5
+            logits, tags, nwords, crf_params)
+        loss = tf.reduce_mean(-log_likelihood)
 
         # Metrics
-        weights = tf.sequence_mask(nwords)#convert the vector of size n to a matrix of bool of size n * max value in the vector v[1,2] ==> m[[true,false],[true, true]]
+        weights = tf.sequence_mask(nwords)
         metrics = {
             'acc': tf.metrics.accuracy(tags, pred_ids, weights),
-            'precision': precision(tags, pred_ids, num_tags, indices, weights),#ground truth, predictions, num of tags 9, The indices of the positive classes, 
+            'precision': precision(tags, pred_ids, num_tags, indices, weights),
             'recall': recall(tags, pred_ids, num_tags, indices, weights),
             'f1': f1(tags, pred_ids, num_tags, indices, weights),
         }
         for metric_name, op in metrics.items():
-            tf.summary.scalar(metric_name, op[1])#for tensor board#tuple of (scalar float Tensor, update_op) op[1] => update_op: An operation that increments the total and count variables appropriately and whose value matches accuracy.
+            tf.summary.scalar(metric_name, op[1])
 
-        if mode == tf.estimator.ModeKeys.EVAL:#Eval
+        if mode == tf.estimator.ModeKeys.EVAL:
             return tf.estimator.EstimatorSpec(
                 mode, loss=loss, eval_metric_ops=metrics)
 
-        elif mode == tf.estimator.ModeKeys.TRAIN:#training
-            train_op = tf.train.AdamOptimizer(learning_rate=0.001).minimize(
-                loss, global_step=tf.train.get_or_create_global_step())#adam optimizer operation to optimize the loss, global_step: Optional Variable to increment by one after the variables have been updated.
+        elif mode == tf.estimator.ModeKeys.TRAIN:
+            train_op = tf.train.AdamOptimizer().minimize(
+                loss, global_step=tf.train.get_or_create_global_step())
             return tf.estimator.EstimatorSpec(
                 mode, loss=loss, train_op=train_op)
 
@@ -151,13 +187,15 @@ def model_fn(features, labels, mode, params):
 if __name__ == '__main__':
     # Params
     params = {
-        'dim': 300,#dimension word embedding glove
-        'dim_chars': 100,#dimension char enbedding (char lstm input)
+        'dim_chars': 100,
+        'dim': 300,
         'dropout': 0.5,
-        'num_oov_buckets': 1,#to give index for out of vocabulary
+        'num_oov_buckets': 1,
         'epochs': 25,
-        'batch_size': 32,      
-        'buffer': 15000,#buffer_size: A tf.int64 scalar tf.Tensor, representing the number of elements from this dataset from which the new dataset will sample.
+        'batch_size': 20,
+        'buffer': 15000,
+        'char_lstm_size': 50,
+        'lstm_size': 300,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
@@ -191,13 +229,13 @@ if __name__ == '__main__':
         Path('results/score').mkdir(parents=True, exist_ok=True)
         with Path('results/score/{}.preds.txt'.format(name)).open('wb') as f:
             test_inpf = functools.partial(input_fn, fwords(name), ftags(name))
-            golds_gen = generator_fn(fwords(name), ftags(name))#ground truth ((words, numwords), (chars, numchars)), tags
-            preds_gen = estimator.predict(test_inpf)#prediction : preds_ids,tags
+            golds_gen = generator_fn(fwords(name), ftags(name))
+            preds_gen = estimator.predict(test_inpf)
             for golds, preds in zip(golds_gen, preds_gen):
                 ((words, _), (_, _)), tags = golds
                 for word, tag, tag_pred in zip(words, tags, preds['tags']):
-                    f.write(b' '.join([word, tag, tag_pred]) + b'\n')#WORD, REAL TAG, PREDICTED TAG
+                    f.write(b' '.join([word, tag, tag_pred]) + b'\n')
                 f.write(b'\n')
 
     for name in ['train', 'testa', 'testb']:
-        write_predictions(name)#PREDICT THE 3 DATASET
+write_predictions(name)
