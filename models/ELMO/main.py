@@ -209,7 +209,7 @@ if __name__ == '__main__':
         'filters': 100,
         'kernel_size': 3,
         'lstm_size': 100,
-        'lstm2_size': 600,
+        'lstm2_size': 400,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
