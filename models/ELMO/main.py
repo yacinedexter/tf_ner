@@ -131,7 +131,7 @@ def model_fn(features, labels, mode, params):
     elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=False)
     word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
                       signature="tokens",
-                      as_dict=True)["word_emb"]
+                      as_dict=True)["elmo"]
     
     
     # Concatenate output LSTM1 and ELMO Embeddings, dropout 
@@ -204,11 +204,11 @@ if __name__ == '__main__':
         'dropout': 0.5,
         'num_oov_buckets': 1,
         'epochs': 25,
-        'batch_size': 32,
+        'batch_size': 20,
         'buffer': 15000,
         'filters': 100,
         'kernel_size': 3,
-        'lstm_size': 150,
+        'lstm_size': 100,
         'lstm2_size': 500,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
