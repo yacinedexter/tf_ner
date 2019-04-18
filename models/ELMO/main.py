@@ -95,26 +95,15 @@ def model_fn(features, labels, mode, params):
     # Char Embeddings
     char_ids = vocab_chars.lookup(chars)
     variable = tf.get_variable(
-        'chars_embeddings', [num_chars, params['dim_chars']], tf.float32)
+        'chars_embeddings', [num_chars + 1, params['dim_chars']], tf.float32)
     char_embeddings = tf.nn.embedding_lookup(variable, char_ids)
     char_embeddings = tf.layers.dropout(char_embeddings, rate=dropout,
                                         training=training)
 
-    # Char LSTM
-    dim_words = tf.shape(char_embeddings)[1]
-    dim_chars = tf.shape(char_embeddings)[2]
-    flat = tf.reshape(char_embeddings, [-1, dim_chars, params['dim_chars']])
-    t = tf.transpose(flat, perm=[1, 0, 2])
-    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
-    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
-    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
-    _, (_, output_fw) = lstm_cell_fw(t, dtype=tf.float32,
-                                     sequence_length=tf.reshape(nchars, [-1]))
-    _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
-                                     sequence_length=tf.reshape(nchars, [-1]))
-    output = tf.concat([output_fw, output_bw], axis=-1)
-    char_embeddings = tf.reshape(output, [-1, dim_words, 2*params['char_lstm_size']])
-
+    # Char 1d convolution
+    weights = tf.sequence_mask(nchars)
+    char_embeddings = masked_conv1d_and_max(
+	    char_embeddings, weights, params['filters'], params['kernel_size'])
 
     #ELMO
     elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=False)
@@ -192,10 +181,12 @@ if __name__ == '__main__':
         'dropout': 0.5,
         'num_oov_buckets': 1,
         'epochs': 25,
-        'batch_size': 20,
+        'batch_size': 32,
         'buffer': 15000,
         'char_lstm_size': 50,
-        'lstm_size': 200,
+        'filters': 100,
+	'kernel_size': 3,
+        'lstm_size': 250,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
