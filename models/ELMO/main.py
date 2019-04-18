@@ -1,5 +1,4 @@
-
-"""GloVe Embeddings + chars lstm + bi-LSTM1 + ELMO + bi-LSTM2 + CRF"""
+"""GloVe Embeddings + chars conv and max pooling + bi-LSTM + CRF"""
 
 __author__ = "Guillaume Genthial"
 
@@ -14,6 +13,7 @@ import tensorflow_hub as hub
 import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
+
 from masked_conv import masked_conv1d_and_max
 
 DATADIR = '../../data/example'
@@ -103,15 +103,15 @@ def model_fn(features, labels, mode, params):
     # Char 1d convolution
     weights = tf.sequence_mask(nchars)
     char_embeddings = masked_conv1d_and_max(
-	    char_embeddings, weights, params['filters'], params['kernel_size'])
+        char_embeddings, weights, params['filters'], params['kernel_size'])
 
-    #ELMO
-    elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=False)
-    word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
-                      signature="tokens",
-                      as_dict=True)["word_emb"]
-    
-	
+    # Word Embeddings
+    word_ids = vocab_words.lookup(words)
+    glove = np.load(params['glove'])['embeddings']  # np.array
+    variable = np.vstack([glove, [[0.] * params['dim']]])
+    variable = tf.Variable(variable, dtype=tf.float32, trainable=False)
+    word_embeddings = tf.nn.embedding_lookup(variable, word_ids)
+
     # Concatenate Word and Char Embeddings
     embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)
     embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
@@ -125,8 +125,31 @@ def model_fn(features, labels, mode, params):
     output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
     output = tf.concat([output_fw, output_bw], axis=-1)
     output = tf.transpose(output, perm=[1, 0, 2])
-    output = tf.layers.dropout(output, rate=dropout, training=training)    
- 
+    
+    
+    #ELMO
+    elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=False)
+    word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
+                      signature="tokens",
+                      as_dict=True)["elmo"]
+    
+    
+    # Concatenate output LSTM1 and ELMO Embeddings, dropout 
+    embeddings = tf.concat([word_embeddings, output], axis=-1)
+    embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
+    
+    # LSTM 2
+    t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major
+    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm2_size'])
+    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm2_size'])
+    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
+    output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=nwords)
+    output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
+    output = tf.concat([output_fw, output_bw], axis=-1)
+    output = tf.transpose(output, perm=[1, 0, 2])
+    output = tf.concat([word_embeddings, output], axis=-1)
+    output = tf.layers.dropout(output, rate=dropout, training=training)
+    
     
     # CRF
     logits = tf.layers.dense(output, num_tags)
@@ -183,10 +206,10 @@ if __name__ == '__main__':
         'epochs': 25,
         'batch_size': 32,
         'buffer': 15000,
-        'char_lstm_size': 50,
         'filters': 100,
-	'kernel_size': 3,
-        'lstm_size': 250,
+        'kernel_size': 3,
+        'lstm_size': 100,
+        'lstm2_size': 600,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
@@ -229,4 +252,4 @@ if __name__ == '__main__':
                 f.write(b'\n')
 
     for name in ['train', 'testa', 'testb']:
-        write_predictions(name)
+	write_predictions(name)
