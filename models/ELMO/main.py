@@ -128,7 +128,7 @@ def model_fn(features, labels, mode, params):
     
     
     #ELMO
-    elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=False)
+    elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=True)
     word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
                       signature="tokens",
                       as_dict=True)["elmo"]
@@ -204,7 +204,7 @@ if __name__ == '__main__':
         'dropout': 0.5,
         'num_oov_buckets': 1,
         'epochs': 25,
-        'batch_size': 20,
+        'batch_size': 32,
         'buffer': 15000,
         'filters': 100,
         'kernel_size': 3,
