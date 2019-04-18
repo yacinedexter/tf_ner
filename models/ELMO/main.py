@@ -128,7 +128,7 @@ def model_fn(features, labels, mode, params):
     
     
     #ELMO
-    elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=False)
+    elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=True)
     word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
                       signature="tokens",
                       as_dict=True)["word_emb"]
