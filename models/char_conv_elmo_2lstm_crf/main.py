@@ -136,7 +136,7 @@ def model_fn(features, labels, mode, params):
     
     # Concatenate output LSTM1 and ELMO Embeddings, dropout 
     embeddings = tf.concat([word_embeddings, output], axis=-1)
-    embeddings = tf.layers.dropout(embeddings, rate=0.7, training=training)
+    embeddings = tf.layers.dropout(embeddings, rate=0.6, training=training)
     
     # LSTM 2
     t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major
@@ -208,7 +208,7 @@ if __name__ == '__main__':
         'buffer': 15000,
         'filters': 100,
         'kernel_size': 3,
-        'lstm_size': 150,
+        'lstm_size': 175,
         'lstm2_size': 500,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
