@@ -119,11 +119,11 @@ def model_fn(features, labels, mode, params):
     glove = np.load(params['glove'])['embeddings']  # np.array
     variable = np.vstack([glove, [[0.] * params['dim']]])
     variable = tf.Variable(variable, dtype=tf.float32, trainable=False)
-    word_embeddings = tf.nn.embedding_lookup(variable, word_ids)
+    embeddings = tf.nn.embedding_lookup(variable, word_ids)
     
     
     # Concatenate Word and Char Embeddings
-    embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)
+    #embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)
     embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
     
     
@@ -210,10 +210,10 @@ if __name__ == '__main__':
         'dropout': 0.5,
         'num_oov_buckets': 1,
         'epochs': 25,
-        'batch_size': 64,
+        'batch_size': 40,
         'buffer': 15000,
-        'char_lstm_size': 175,
-        'lstm_size': 175,
+        'char_lstm_size': 150,
+        'lstm_size': 150,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
