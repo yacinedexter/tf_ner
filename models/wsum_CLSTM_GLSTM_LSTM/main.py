@@ -167,6 +167,7 @@ def model_fn(features, labels, mode, params):
     output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
     output = tf.concat([output_fw, output_bw], axis=-1)
     output = tf.transpose(output, perm=[1, 0, 2])    
+    output = tf.layers.dropout(output, rate=dropout, training=training)
     
     # CRF
     logits = tf.layers.dense(output, num_tags)
