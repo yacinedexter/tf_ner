@@ -127,7 +127,7 @@ def model_fn(features, labels, mode, params):
     embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
     
     
-    # LSTM
+    # LSTM for glove
     t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major
     lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
@@ -157,6 +157,17 @@ def model_fn(features, labels, mode, params):
                                      
     output = tf.layers.dropout(weight_sum['weighted_op'], rate=dropout, training=training)    
 
+    
+    # LSTM for wsum(GLSTM, CLSTM)
+    t = tf.transpose(output, perm=[1, 0, 2])  # Need time-major
+    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
+    output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=nwords)
+    output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
+    output = tf.concat([output_fw, output_bw], axis=-1)
+    output = tf.transpose(output, perm=[1, 0, 2])    
+    
     # CRF
     logits = tf.layers.dense(output, num_tags)
     crf_params = tf.get_variable("crf", [num_tags, num_tags], dtype=tf.float32)
