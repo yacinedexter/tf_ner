@@ -137,26 +137,26 @@ def model_fn(features, labels, mode, params):
     output = tf.concat([output_fw, output_bw], axis=-1)
     output = tf.transpose(output, perm=[1, 0, 2])
     #output = tf.layers.dropout(output, rate=dropout, training=training)
+    output = tf.concat([output, char_embeddings], axis=-1)
     
+#    layers = []
+#    layers.append(char_embeddings)
+#   layers.append(output)
     
-    layers = []
-    layers.append(char_embeddings)
-    layers.append(output)
+#   lm_embeddings = tf.concat(
+#                              [tf.expand_dims(t, axis=1) for t in layers], axis=1)
     
-    lm_embeddings = tf.concat(
-                              [tf.expand_dims(t, axis=1) for t in layers], axis=1)
-    
-    weights = tf.sequence_mask(nwords)
+#    weights = tf.sequence_mask(nwords)
     
 
-    bilm_ops = {'lm_embeddings':lm_embeddings,
-                'mask': weights}
+#    bilm_ops = {'lm_embeddings':lm_embeddings,
+#                'mask': weights}
     
-    weight_sum = weight_layers(
-        'elmo_input', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
+#    weight_sum = weight_layers(
+#        'elmo_input', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
                                      
-    output = tf.layers.dropout(weight_sum['weighted_op'], rate=dropout, training=training)    
-
+#    output = tf.layers.dropout(weight_sum['weighted_op'], rate=dropout, training=training)    
+    output = tf.layers.dropout(output, rate=dropout, training=training)    
     
     # LSTM for wsum(GLSTM, CLSTM)
     t = tf.transpose(output, perm=[1, 0, 2])  # Need time-major
