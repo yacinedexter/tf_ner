@@ -134,14 +134,31 @@ def model_fn(features, labels, mode, params):
     lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
     output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=nwords)
     output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
-    output = tf.concat([output_fw, output_bw], axis=-1)
-    output = tf.transpose(output, perm=[1, 0, 2])
+    #output = tf.concat([output_fw, output_bw], axis=-1)
+    #output = tf.transpose(output, perm=[1, 0, 2])
     #output = tf.layers.dropout(output, rate=dropout, training=training)
+    output_fw = tf.transpose(output_fw, perm=[1, 0, 2])    
+    output_bw = tf.transpose(output_bw, perm=[1, 0, 2])    
     
+    layers = []
+    layers.append(output_fw)
+    layers.append(output_bw)
+    
+    lm_embeddings = tf.concat(
+                              [tf.expand_dims(t, axis=1) for t in layers], axis=1)
+    
+    weights = tf.sequence_mask(nwords)
+    
+
+    bilm_ops = {'lm_embeddings':lm_embeddings,
+                'mask': weights}
+    
+    glstm_weight_sum = weight_layers(
+        'GlovefbConcat', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)        
     
     layers = []
     layers.append(char_embeddings)
-    layers.append(output)
+    layers.append(glstm_weight_sum['weighted_op'])
     
     lm_embeddings = tf.concat(
                               [tf.expand_dims(t, axis=1) for t in layers], axis=1)
