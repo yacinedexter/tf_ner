@@ -4,13 +4,18 @@ import logging
 from pathlib import Path
 import sys
 
-import tensorflow_hub as hub
+
 
 import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
 
-from masked_conv import masked_conv1d_and_max
+import tensorflow_hub as hub
+
+import bert
+from bert import run_classifier
+from bert import optimization
+from bert import tokenization
 
 DATADIR = '../../data/example'
 
@@ -87,64 +92,52 @@ def model_fn(features, labels, mode, params):
         num_tags = len(indices) + 1
     with Path(params['chars']).open() as f:
         num_chars = sum(1 for _ in f) + params['num_oov_buckets']
+    label_list = [idx for idx, tag in enumerate(f)]
 
-    # Char Embeddings
-    char_ids = vocab_chars.lookup(chars)
-    variable = tf.get_variable(
-        'chars_embeddings', [num_chars + 1, params['dim_chars']], tf.float32)
-    char_embeddings = tf.nn.embedding_lookup(variable, char_ids)
-    char_embeddings = tf.layers.dropout(char_embeddings, rate=dropout,
-                                        training=training)
 
-    # Char 1d convolution
-    weights = tf.sequence_mask(nchars)
-    char_embeddings = masked_conv1d_and_max(
-        char_embeddings, weights, params['filters'], params['kernel_size'])
+    InputExamples = bert.run_classifier.InputExample(guid=None, 
+                                                     text_a = words, 
+                                                     text_b = None, 
+                                                     label = labels)  
+    
+    # This is a path to an uncased (all lowercase) version of BERT
+    BERT_MODEL_HUB = "https://tfhub.dev/google/bert_cased_L-12_H-768_A-12/1"
 
-    # Word Embeddings
-    word_ids = vocab_words.lookup(words)
-    glove = np.load(params['glove'])['embeddings']  # np.array
-    variable = np.vstack([glove, [[0.] * params['dim']]])
-    variable = tf.Variable(variable, dtype=tf.float32, trainable=False)
-    word_embeddings = tf.nn.embedding_lookup(variable, word_ids)
+    def create_tokenizer_from_hub_module():
+        """Get the vocab file and casing info from the Hub module."""
+        with tf.Graph().as_default():
+            bert_module = hub.Module(BERT_MODEL_HUB)
+            tokenization_info = bert_module(signature="tokenization_info", as_dict=True)
+        vocab_file = tokenization_info["vocab_file"]
+      return bert.tokenization.FullTokenizer(vocab_file=vocab_file)
+    
+    tokenizer = create_tokenizer_from_hub_module()   
+    
+    # We'll set sequences to be at most 128 tokens long.
+    MAX_SEQ_LENGTH = 128
+    
+    # Convert our train and test features to InputFeatures that BERT understands.
+    feat = bert.run_classifier.convert_examples_to_features(InputExamples, label_list, MAX_SEQ_LENGTH, tokenizer)    
+    
+    """Creates a classification model."""
 
-    # Concatenate Word and Char Embeddings
-    embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)
-    embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
+    bert_module = hub.Module(
+        BERT_MODEL_HUB,
+        trainable=True)
+    bert_inputs = dict(
+        input_ids=input_ids,
+        input_mask=input_mask,
+        segment_ids=segment_ids)
+    bert_outputs = bert_module(
+        inputs=bert_inputs,
+        signature="tokens",
+        as_dict=True)
 
-    # LSTM 1
-    t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major
-    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
-    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
-    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
-    output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=nwords)
-    output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
-    output = tf.concat([output_fw, output_bw], axis=-1)
-    output = tf.transpose(output, perm=[1, 0, 2])
-    
-    
-    #ELMO
-    elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=True)
-    word_embeddings = elmo(inputs={"tokens": words,"sequence_len": nwords},
-                      signature="tokens",
-                      as_dict=True)["elmo"]
-    
-    
-    # Concatenate output LSTM1 and ELMO Embeddings, dropout 
-    embeddings = tf.concat([word_embeddings, output], axis=-1)
-    embeddings = tf.layers.dropout(embeddings, rate=0.5, training=training)
-    
-    # LSTM 2
-    t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major
-    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm2_size'])
-    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm2_size'])
-    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
-    output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=nwords)
-    output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
-    output = tf.concat([output_fw, output_bw], axis=-1)
-    output = tf.transpose(output, perm=[1, 0, 2])
-    output = tf.concat([word_embeddings, output], axis=-1)
-    output = tf.layers.dropout(output, rate=dropout, training=training)
+  # Use "pooled_output" for classification tasks on an entire sentence.
+  # Use "sequence_outputs" for token-level output.
+  output_layer = bert_outputs["pooled_output"]
+
+  hidden_size = output_layer.shape[-1].value
     
     
     # CRF
