@@ -111,7 +111,8 @@ def model_fn(features, labels, mode, params):
     _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
                                      sequence_length=tf.reshape(nchars, [-1]))
     output = tf.concat([output_fw, output_bw], axis=-1)
-    char_embeddings = tf.reshape(output, [-1, dim_words, 2*params['char_lstm_size']])
+    char_embeddings_lstm = tf.reshape(output, [-1, params['char_lstm_size']*2])# [b,t,D]
+    char_embeddings_lstm = tf.expand_dims(char_embeddings_lstm, -2)
     
 
     # Word Embeddings
@@ -137,27 +138,39 @@ def model_fn(features, labels, mode, params):
     output = tf.concat([output_fw, output_bw], axis=-1)
     output = tf.transpose(output, perm=[1, 0, 2])
     #output = tf.layers.dropout(output, rate=dropout, training=training)
+    
+    output = tf.reshape(output, [-1, params['glstm_size']*2])# [b,t,D]
+    output = tf.expand_dims(output, -2)    
+
+    #concat cnn and lstm char embeddings
+    char_embeddings = tf.concat([output, char_embeddings_lstm], axis=-2)
+    
+        
+    #attention
+    with tf.name_scope('Attention_layer'):
+    	attention_output, alphas = attention(char_embeddings, params['char_lstm_size']*2, time_major=False, return_alphas=True)
+    	tf.summary.histogram('alphas', alphas)    
 
     
-
+#    layers = []
+#    layers.append(char_embeddings)
+#    layers.append(output)
     
-    layers = []
-    layers.append(char_embeddings)
-    layers.append(output)
+#    lm_embeddings = tf.concat(
+#                              [tf.expand_dims(t, axis=1) for t in layers], axis=1)
     
-    lm_embeddings = tf.concat(
-                              [tf.expand_dims(t, axis=1) for t in layers], axis=1)
-    
-    weights = tf.sequence_mask(nwords)
+#    weights = tf.sequence_mask(nwords)
     
 
-    bilm_ops = {'lm_embeddings':lm_embeddings,
-                'mask': weights}
+#    bilm_ops = {'lm_embeddings':lm_embeddings,
+#                'mask': weights}
     
-    weight_sum = weight_layers(
-        'elmo_input', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
-                                     
-    output = tf.layers.dropout(weight_sum['weighted_op'], rate=dropout, training=training)    
+#    weight_sum = weight_layers(
+#        'elmo_input', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
+    
+    attention_output = tf.reshape(attention_output, [-1, dim_words, params['char_lstm_size']*2])
+    
+    output = tf.layers.dropout(attention_output, rate=dropout, training=training)    
 
     
     # LSTM for wsum(GLSTM, CLSTM)
