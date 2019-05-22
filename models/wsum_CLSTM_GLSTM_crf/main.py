@@ -1,4 +1,4 @@
-"""GloVe Embeddings + chars bi-LSTM + bi-LSTM + CRF"""
+"""attention(CLSTM + GLSTM) --> LSTM -->CRF"""
 
 __author__ = "Guillaume Genthial"
 
@@ -13,6 +13,7 @@ import tensorflow as tf
 from tf_metrics import precision, recall, f1
 
 from elmo import weight_layers
+from attention import attention
 
 DATADIR = '../../data/example'
 
