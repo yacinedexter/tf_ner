@@ -207,11 +207,11 @@ if __name__ == '__main__':
         'dropout': 0.5,
         'num_oov_buckets': 1,#to give index for out of vocabulary
         'epochs': 25,
-        'batch_size': 50,
+        'batch_size': 32,
         'filters': 50,
         'kernel_size': 3,        
         'buffer': 15000,#buffer_size: A tf.int64 scalar tf.Tensor, representing the number of elements from this dataset from which the new dataset will sample.
-        'char_lstm_size': 150,#char lstm unit number (hidden state size)
+        'char_lstm_size': 100,#char lstm unit number (hidden state size)
         'lstm_size': 200,#word lstm unit number (hidden state size)
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
