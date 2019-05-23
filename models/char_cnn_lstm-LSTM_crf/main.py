@@ -116,7 +116,7 @@ def model_fn(features, labels, mode, params):
     dim_words = tf.shape(char_embeddings)[1]#max dim word (time len)(or number of chars max of a word)[nombre de phrase(batch),nombre de mots max,time len, dim char 100]
     dim_chars = tf.shape(char_embeddings)[2]#dimension de char 100 [nombre de phrase(batch),nombre de mots max,time len ,dim char 100]
     
-    flat = tf.reshape(char_embeddings, [-1, dim_chars, params['filters']])#[?,max len word(or time len),100]
+    flat = tf.reshape(output, [-1, dim_chars, params['filters']])#[?,max len word(or time len),100]
     t = tf.transpose(flat, perm=[1, 0, 2])# time major
     lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
