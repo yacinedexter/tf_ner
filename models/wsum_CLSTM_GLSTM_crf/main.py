@@ -162,8 +162,7 @@ def model_fn(features, labels, mode, params):
     weight_sum = weight_layers(
         'elmo_input', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
                                      
-    output = tf.layers.dropout(weight_sum['weighted_op'], rate=dropout, training=training)    
-    output = tf.layers.dropout(output, rate=dropout, training=training)    
+    output = tf.layers.dropout(weight_sum['weighted_op'], rate=dropout, training=training)
     
     # LSTM for wsum(GLSTM, CLSTM)
     t = tf.transpose(output, perm=[1, 0, 2])  # Need time-major
@@ -235,7 +234,7 @@ if __name__ == '__main__':
         'kernel_size': 3,
         'char_lstm_size': 150,
         'glstm_size': 150,
-        'wlstm_size': 300,
+        'wlstm_size': 200,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
