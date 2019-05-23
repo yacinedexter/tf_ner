@@ -231,7 +231,7 @@ if __name__ == '__main__':
         'epochs': 25,
         'batch_size': 50,
         'buffer': 15000,
-        'filters': 100,
+        'filters': 200,
         'kernel_size': 3,
         'char_lstm_size': 100,
         'glstm_size': 100,
