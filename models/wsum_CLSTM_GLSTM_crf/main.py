@@ -13,6 +13,7 @@ import tensorflow as tf
 from tf_metrics import precision, recall, f1
 
 from elmo import weight_layers
+from masked_conv import masked_conv1d_and_max
 
 DATADIR = '../../data/example'
 
@@ -111,7 +112,12 @@ def model_fn(features, labels, mode, params):
     _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
                                      sequence_length=tf.reshape(nchars, [-1]))
     output = tf.concat([output_fw, output_bw], axis=-1)
-    char_embeddings = tf.reshape(output, [-1, dim_words, 2*params['char_lstm_size']])
+    char_embeddings_lstm = tf.reshape(output, [-1, dim_words, 2*params['char_lstm_size']])
+    
+    # Char 1d convolution
+    weights = tf.sequence_mask(nchars)
+    char_embeddings_cnn = masked_conv1d_and_max(
+        char_embeddings, weights, params['filters'], params['kernel_size']) 
     
 
     # Word Embeddings
@@ -137,10 +143,11 @@ def model_fn(features, labels, mode, params):
     output = tf.concat([output_fw, output_bw], axis=-1)
     output = tf.transpose(output, perm=[1, 0, 2])
     #output = tf.layers.dropout(output, rate=dropout, training=training)
-
+	
     
     layers = []
-    layers.append(char_embeddings)
+    layers.append(char_embeddings_lstm)
+    layers.append(char_embeddings_cnn)
     layers.append(output)
     
     lm_embeddings = tf.concat(
