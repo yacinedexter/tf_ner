@@ -118,7 +118,18 @@ def model_fn(features, labels, mode, params):
     weights = tf.sequence_mask(nchars)
     char_embeddings_cnn = masked_conv1d_and_max(
         char_embeddings, weights, params['filters'], params['kernel_size']) 
-    
+    char_embeddings_cnn = tf.layers.dropout(char_embeddings_cnn, rate=dropout, training=training)
+
+    # LSTM for CNN
+    t = tf.transpose(char_embeddings_cnn, perm=[1, 0, 2])  # Need time-major
+    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['cnn_lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['cnn_lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
+    output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=nwords)
+    output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
+    output = tf.concat([output_fw, output_bw], axis=-1)
+    output_cnn = tf.transpose(output, perm=[1, 0, 2])    
+
 
     # Word Embeddings
     word_ids = vocab_words.lookup(words)
@@ -126,10 +137,6 @@ def model_fn(features, labels, mode, params):
     variable = np.vstack([glove, [[0.] * params['dim']]])
     variable = tf.Variable(variable, dtype=tf.float32, trainable=False)
     embeddings = tf.nn.embedding_lookup(variable, word_ids)
-    
-    
-    # Concatenate Word and Char Embeddings
-    #embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)
     embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
     
     
@@ -142,12 +149,11 @@ def model_fn(features, labels, mode, params):
     output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
     output = tf.concat([output_fw, output_bw], axis=-1)
     output = tf.transpose(output, perm=[1, 0, 2])
-    #output = tf.layers.dropout(output, rate=dropout, training=training)
 	
     
     layers = []
     layers.append(char_embeddings_lstm)
-    layers.append(char_embeddings_cnn)
+    layers.append(output_cnn)
     layers.append(output)
     
     lm_embeddings = tf.concat(
@@ -230,9 +236,10 @@ if __name__ == '__main__':
         'epochs': 25,
         'batch_size': 50,
         'buffer': 15000,
-        'filters': 300,
+        'filters': 100,
         'kernel_size': 3,
         'char_lstm_size': 150,
+	'cnn_lstm_size': 150,
         'glstm_size': 150,
         'wlstm_size': 200,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
