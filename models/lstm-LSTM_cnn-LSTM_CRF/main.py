@@ -150,7 +150,6 @@ def model_fn(features, labels, mode, params):
     output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
     output = tf.concat([output_fw, output_bw], axis=-1)
     output = tf.transpose(output, perm=[1, 0, 2])
-    output = tf.layers.dropout(output, rate=dropout, training=training)
 
     # Concatenate Word and Char cnn Embeddings
     embeddings2 = tf.concat([word_embeddings, char_embeddings_cnn], axis=-1)#concat on the last dimension axis 100+300
@@ -165,7 +164,6 @@ def model_fn(features, labels, mode, params):
     output_bw2, _ = lstm_cell_bw(t2, dtype=tf.float32, sequence_length=nwords)
     output2 = tf.concat([output_fw2, output_bw2], axis=-1)
     output2 = tf.transpose(output2, perm=[1, 0, 2])
-    output2 = tf.layers.dropout(output2, rate=dropout, training=training)
     #output = tf.concat([output, output2], axis=-1)    
     
     layers = []
