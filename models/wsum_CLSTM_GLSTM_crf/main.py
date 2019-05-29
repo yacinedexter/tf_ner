@@ -98,21 +98,6 @@ def model_fn(features, labels, mode, params):
     char_embeddings = tf.nn.embedding_lookup(variable, char_ids)
     char_embeddings = tf.layers.dropout(char_embeddings, rate=dropout,
                                         training=training)
-
-    # Char LSTM
-    dim_words = tf.shape(char_embeddings)[1]
-    dim_chars = tf.shape(char_embeddings)[2]
-    flat = tf.reshape(char_embeddings, [-1, dim_chars, params['dim_chars']])
-    t = tf.transpose(flat, perm=[1, 0, 2])
-    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
-    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['char_lstm_size'])
-    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
-    _, (_, output_fw) = lstm_cell_fw(t, dtype=tf.float32,
-                                     sequence_length=tf.reshape(nchars, [-1]))
-    _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
-                                     sequence_length=tf.reshape(nchars, [-1]))
-    output = tf.concat([output_fw, output_bw], axis=-1)
-    char_embeddings_lstm = tf.reshape(output, [-1, dim_words, 2*params['char_lstm_size']])
     
     # Char 1d convolution
     weights = tf.sequence_mask(nchars)
@@ -152,7 +137,6 @@ def model_fn(features, labels, mode, params):
 	
     
     layers = []
-    layers.append(char_embeddings_lstm)
     layers.append(output_cnn)
     layers.append(output)
     
@@ -179,7 +163,24 @@ def model_fn(features, labels, mode, params):
     output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
     output = tf.concat([output_fw, output_bw], axis=-1)
     output = tf.transpose(output, perm=[1, 0, 2])    
-    output = tf.layers.dropout(output, rate=dropout, training=training)
+    
+    layers = []
+    layers.append(output_cnn)
+    layers.append(output)
+    
+    lm_embeddings = tf.concat(
+                              [tf.expand_dims(t, axis=1) for t in layers], axis=1)
+    
+    weights = tf.sequence_mask(nwords)
+    
+
+    bilm_ops = {'lm_embeddings':lm_embeddings,
+                'mask': weights}
+    
+    weight_sum = weight_layers(
+        'w_sum2', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
+                                     
+    output = tf.layers.dropout(weight_sum['weighted_op'], rate=dropout, training=training)
     
     # CRF
     logits = tf.layers.dense(output, num_tags)
@@ -234,14 +235,13 @@ if __name__ == '__main__':
         'dropout': 0.5,
         'num_oov_buckets': 1,
         'epochs': 25,
-        'batch_size': 32,
+        'batch_size': 50,
         'buffer': 15000,
         'filters': 50,
         'kernel_size': 3,
-        'char_lstm_size': 125,
-	'cnn_lstm_size': 125,
-        'glstm_size': 125,
-        'wlstm_size': 200,
+	'cnn_lstm_size': 150,
+        'glstm_size': 150,
+        'wlstm_size': 150,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
