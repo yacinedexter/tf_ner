@@ -15,7 +15,10 @@ def attention(inputs, attention_size, time_major=False, return_alphas=False):
     with tf.name_scope('v'):
         # Applying fully connected layer with non-linear activation to each of the B*T timestamps;
         #  the shape of `v` is (B,T,D)*(D,A)=(B,T,A), where A=attention_size
-        v = tf.layers.dense(inputs, attention_size, activation=tf.tanh, use_bias=True, bias_initializer=tf.zeros_initializer())
+        v = tf.layers.dense(inputs, attention_size, 
+                            activation=tf.tanh, 
+                            use_bias=True, 
+                            bias_initializer=tf.zeros_initializer())
         
     # For each of the timestamps its vector of size A from `v` is reduced with `u` vector
     vu = tf.tensordot(v, u_omega, axes=1, name='vu')  # (B,T) shape
