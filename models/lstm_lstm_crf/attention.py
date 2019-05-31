@@ -26,7 +26,7 @@ def attention(inputs, attention_size, time_major=False, return_alphas=False):
     alphas = tf.nn.softmax(uu, name='alphas')         # (B,T,T) shape
 
     # Output of (Bi-)RNN is reduced with attention vector; the result has (B,T,D) shape
-    output = tf.reduce_sum(inputs * tf.expand_dims(alphas, -1), 2)
+    output = tf.reduce_sum(inputs * tf.expand_dims(alphas, -1), 1)
 
     if not return_alphas:
         return output
