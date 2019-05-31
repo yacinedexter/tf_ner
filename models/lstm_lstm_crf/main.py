@@ -11,6 +11,7 @@ import sys
 import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
+from attention import attention
 
 DATADIR = '../../data/example'
 
@@ -109,7 +110,7 @@ def model_fn(features, labels, mode, params):
     _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
                                      sequence_length=tf.reshape(nchars, [-1]))
     output = tf.concat([output_fw, output_bw], axis=-1)
-    char_embeddings = tf.reshape(output, [-1, dim_words, 50])
+    char_embeddings = tf.reshape(output, [-1, dim_words, 2*params['char_lstm_size']])
 
     # Word Embeddings
     word_ids = vocab_words.lookup(words)
@@ -188,7 +189,7 @@ if __name__ == '__main__':
         'epochs': 25,
         'batch_size': 20,
         'buffer': 15000,
-        'char_lstm_size': 25,
+        'char_lstm_size': 50,
         'lstm_size': 100,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
