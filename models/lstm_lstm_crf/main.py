@@ -134,9 +134,9 @@ def model_fn(features, labels, mode, params):
     output = tf.transpose(output, perm=[1, 0, 2])
     output = tf.layers.dropout(output, rate=dropout, training=training)
     
-    ##attention
-    #with tf.name_scope('Attention_layer'):
-    #	output, alphas = attention(output, params['lstm_size']*2, time_major=False, return_alphas=False)
+    #attention
+    with tf.name_scope('Attention_layer'):
+    	output, alphas = attention(output, params['lstm_size']*2, time_major=False, return_alphas=False)
 
     # CRF
     logits = tf.layers.dense(output, num_tags)
