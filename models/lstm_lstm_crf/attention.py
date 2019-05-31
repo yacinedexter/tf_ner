@@ -12,7 +12,7 @@ def attention(inputs, attention_size, time_major=False, return_alphas=False):
 
     # Trainable parameters
     u_omega = tf.Variable(tf.random_normal([attention_size], stddev=0.1))
-    v_omega = tf.Variable(tf.random_normal([sequence_size ], stddev=0.1))
+    v_omega = tf.Variable([sequence_size])
 
     with tf.name_scope('u'):
         # Applying fully connected layer with non-linear activation to each of the B*T timestamps;
