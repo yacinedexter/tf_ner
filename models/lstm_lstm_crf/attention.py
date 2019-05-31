@@ -11,7 +11,7 @@ def attention(inputs, attention_size, time_major=False, return_alphas=False):
     sequence_size = inputs.shape[1].value  # T value - sequence lenght of the RNN layer
 
     # Trainable parameters
-    u_omega = tf.Variable(tf.random_normal([attention_size, sequence_size], stddev=0.1))
+    u_omega = tf.Variable(tf.random_normal([attention_size, ], stddev=0.1))
 
     with tf.name_scope('u'):
         # Applying fully connected layer with non-linear activation to each of the B*T timestamps;
