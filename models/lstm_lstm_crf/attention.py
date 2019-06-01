@@ -11,7 +11,7 @@ def attention(inputs, attention_size, time_major=False, return_alphas=False):
 
 
     # Trainable parameters
-    u_omega = tf.Variable(tf.random_normal([attention_size, attention_size], stddev=0.1))
+    u_omega = tf.Variable(tf.random_normal([attention_size], stddev=0.1))
 
     with tf.name_scope('u'):
         # Applying fully connected layer with non-linear activation to each of the B*T timestamps;
@@ -23,11 +23,11 @@ def attention(inputs, attention_size, time_major=False, return_alphas=False):
                             bias_initializer=tf.zeros_initializer())
         
     # For each of the timestamps its vector of size A from `u` is reduced with `u_omega` vector
-    uu = tf.tensordot(u, u_omega, axes=1, name='uu')  # (B,T,A)*(A,A)=(B,T,A) shape
-    alphas = tf.nn.softmax(uu, name='alphas')         # (B,T,A) shape
+    uu = tf.tensordot(u, u_omega, axes=1, name='uu')  # (B,T,A)*(A)=(B,T) shape
+    alphas = tf.nn.softmax(uu, name='alphas')         # (B,T) shape
 
     # Output of (Bi-)RNN is reduced with attention vector; the result has (B,T,D) shape
-    output = tf.reduce_sum(inputs* alphas, 1)
+    output = tf.reduce_sum(inputs* tf.expand_dims(alphas, -1), 1)
 
     if not return_alphas:
         return output
