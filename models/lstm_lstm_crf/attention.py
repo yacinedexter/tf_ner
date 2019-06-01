@@ -16,17 +16,18 @@ def attention(inputs, attention_size, time_major=False, return_alphas=False):
     with tf.name_scope('u'):
         # Applying fully connected layer with non-linear activation to each of the B*T timestamps;
         #  the shape of `v` is (B,T,D)*(D,A)=(B,T,A), where A=attention_size
-        u = tf.layers.dense(inputs, attention_size, 
+        u = tf.layers.dense(inputs, 
+                            attention_size, 
                             activation=tf.tanh, 
                             use_bias=True, 
                             bias_initializer=tf.zeros_initializer())
         
     # For each of the timestamps its vector of size A from `u` is reduced with `u_omega` vector
-    uu = tf.tensordot(u, u_omega, axes=1, name='uu')  # (B,T,A)*(A,D)=(B,T,D) shape
-    alphas = tf.nn.softmax(uu, name='alphas')         # (B,T,D) shape
+    uu = tf.tensordot(u, u_omega, axes=1, name='uu')  # (B,T,A)*(A,A)=(B,T,A) shape
+    alphas = tf.nn.softmax(uu, name='alphas')         # (B,T,A) shape
 
     # Output of (Bi-)RNN is reduced with attention vector; the result has (B,T,D) shape
-    output = tf.reduce_sum(tf.tensordot(inputs, alphas, axes=1) , 1)
+    output = tf.reduce_sum(inputs* alphas, 1)
 
     if not return_alphas:
         return output
