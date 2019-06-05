@@ -35,9 +35,3 @@ def attention(inputs, attention_size, time_major=False, return_alphas=False):
         return outputs
     else:
     	return outputs, alphas
-                          
-    #    u = tf.layers.dense(inputs, 
-    #                         attention_size, 
-    #                         activation=tf.tanh, 
-    #                         use_bias=True, 
-    #                         bias_initializer=tf.zeros_initializer())
