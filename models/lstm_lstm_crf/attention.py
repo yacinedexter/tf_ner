@@ -22,22 +22,19 @@ def attention(inputs, attention_size, time_major=False, return_alphas=False):
     outputs = []
     s_inputs = tf.unstack(inputs, axis=1)
     for s_i in s_inputs:
-        u = tf.tanh(tf.tensordot(tf.expand_dims(s_i, -2), q_omega, axes=1)+tf.tensordot(inputs, w_omega, axes=1))        
-        # For each of the timestamps its vector of size A from `u` is reduced with `u_omega` vector
-        uu = tf.tensordot(u, u_omega, axes=1, name='uu')  # (B,T,A)*(A)=(B,T) shape
-        alphas = tf.nn.softmax(uu, name='alphas')         # (B,T) shape
-
-        # Output of (Bi-)RNN is reduced with attention vector; the result has (B,D) shape
-        output = tf.reduce_sum(inputs* tf.expand_dims(alphas, -1), 1)
-        outputs.append(output)
-    
+      u = tf.tanh(tf.tensordot(tf.expand_dims(s_i, -2), q_omega, axes=1)+tf.tensordot(inputs, w_omega, axes=1))        
+      # For each of the timestamps its vector of size A from `u` is reduced with `u_omega` vector
+      uu = tf.tensordot(u, u_omega, axes=1, name='uu')  # (B,T,A)*(A)=(B,T) shape
+      alphas = tf.nn.softmax(uu, name='alphas')         # (B,T) shape
+      # Output of (Bi-)RNN is reduced with attention vector; the result has (B,D) shape
+      output = tf.reduce_sum(inputs* tf.expand_dims(alphas, -1), 1)
+      outputs.append(output)
     outputs=tf.stack(outputs, axis=1)
 
     if not return_alphas:
         return outputs
     else:
     	return outputs, alphas
-
                           
     #    u = tf.layers.dense(inputs, 
     #                         attention_size, 
