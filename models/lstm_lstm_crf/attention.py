@@ -22,7 +22,7 @@ def attention(inputs, dim_words,attention_size, time_major=False, return_alphas=
     u_omega = tf.Variable(tf.random_normal([attention_size], stddev=0.1))
     
     TensorArr = tf.TensorArray(tf.int32, 1, dynamic_size=True, infer_shape=False)
-    b = TensorArr.unstack(a)
+    b = TensorArr.unstack(inputs)
     d = []
     for i in range(0,20):
         d.append(b.read(i))
