@@ -27,7 +27,8 @@ def attention(inputs, nwords,attention_size, time_major=False, return_alphas=Fal
     for i in range(0,20):
         d.append(b.read(i))
     s_inputs=[]    
-    for j in tf.range(max(nwords)):
+    x = max(nwords)
+    for j in range(x):
         k = []
         for i in range (0,20):
             k.append(d[i][j])
