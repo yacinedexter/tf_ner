@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def attention(inputs, dim_words,attention_size, time_major=False, return_alphas=False):
+def attention(inputs, nwords,attention_size, time_major=False, return_alphas=False):
     #    u = tf.layers.dense(inputs, 
     #                         attention_size, 
     #                         activation=tf.tanh, 
@@ -27,7 +27,7 @@ def attention(inputs, dim_words,attention_size, time_major=False, return_alphas=
     for i in range(0,20):
         d.append(b.read(i))
     s_inputs=[]    
-    for j in tf.range(dim_words):
+    for j in tf.range(max(nwords)):
         k = []
         for i in range (0,20):
             k.append(d[i][j])
