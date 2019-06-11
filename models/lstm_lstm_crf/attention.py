@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def attention(inputs, attention_size, time_major=False, return_alphas=False):
+def attention(inputs, dim_words,attention_size, time_major=False, return_alphas=False):
     #    u = tf.layers.dense(inputs, 
     #                         attention_size, 
     #                         activation=tf.tanh, 
@@ -20,12 +20,24 @@ def attention(inputs, attention_size, time_major=False, return_alphas=False):
     q_omega = tf.Variable(tf.random_normal([hidden_size, attention_size], stddev=0.1))
     #b_omega = tf.Variable(tf.random_normal([attention_size], stddev=0.1))
     u_omega = tf.Variable(tf.random_normal([attention_size], stddev=0.1))
-
+    
+    TensorArr = tf.TensorArray(tf.int32, 1, dynamic_size=True, infer_shape=False)
+    b = TensorArr.unstack(a)
+    d = []
+    for i in range(0,20):
+        d.append(b.read(i))
+    s_inputs=[]    
+    for j in range (0,dim_words):
+        k = []
+        for i in range (0,20):
+            k.append(d[i][j])
+            k = tf.stack(k, axis=0)
+            k = tf.expand_dims(k, -2)
+            s_inputs.append(k)
     
     # Applying fully connected layer with non-linear activation to each of the B*T timestamps;
     #  the shape of `v` is (B,T,D)*(D,A)=(B,T,A), where A=attention_size
     outputs = []
-    s_inputs = tf.unstack(inputs, axis=1)
     for s_i in s_inputs:
         u = tf.tanh(tf.tensordot(tf.expand_dims(s_i, -2), q_omega, axes=1)+tf.tensordot(inputs, w_omega, axes=1))        
         # For each of the timestamps its vector of size A from `u` is reduced with `u_omega` vector
