@@ -28,8 +28,11 @@ def attention(inputs, nwords,attention_size, time_major=False, return_alphas=Fal
         d.append(b.read(i))
     s_inputs=[]    
     time = tf.reduce_max(nwords)
+    
     with tf.Session() as sess:
-        time = sess.run(time)
+        tf.enable_eager_execution()
+        time = time.numpy()
+        
     for j in range(time):
         k = []
         for i in range (0,20):
