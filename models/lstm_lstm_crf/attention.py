@@ -30,7 +30,7 @@ def attention(inputs, nwords,attention_size, time_major=False, return_alphas=Fal
     time = tf.reduce_max(nwords)
     
     with tf.Session() as sess:
-        time = time.numpy()
+        time = time.eval()
         
     for j in range(time):
         k = []
