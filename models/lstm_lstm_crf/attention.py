@@ -27,8 +27,7 @@ def attention(inputs, nwords,attention_size, time_major=False, return_alphas=Fal
     for i in range(0,20):
         d.append(b.read(i))
     s_inputs=[]    
-    max_list = tf.map_fn(lambda x: max(nwords), nwords)
-    time = tf.reduce_max(max_list)
+    time = tf.reduce_max(nwords)
     for j in range(time):
         k = []
         for i in range (0,20):
