@@ -32,7 +32,7 @@ def attention(inputs, nwords,attention_size, time_major=False, return_alphas=Fal
     with tf.Session() as sess:
         time = time.eval()
         
-    for j in range(time):
+    for j in range(0,30):
         k = []
         for i in range (0,20):
             k.append(d[i][j])
