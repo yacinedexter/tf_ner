@@ -136,7 +136,7 @@ def model_fn(features, labels, mode, params):
     
     #attention
     with tf.name_scope('Attention_layer'):
-    	output = attention(output, params['lstm_size']*2, time_major=False, return_alphas=False)
+    	output = attention(output, params['lstm_size']*2, nwords, time_major=False, return_alphas=False)
 
     # CRF
     logits = tf.layers.dense(output, num_tags)
