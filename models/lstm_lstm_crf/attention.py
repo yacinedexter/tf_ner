@@ -3,6 +3,7 @@ from tensorflow.python.ops import gen_math_ops
 from tensorflow.python.framework import ops
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
+import numpy as np
 
 def attention(inputs, attention_size, nwords, time_major=False, return_alphas=False):
     #    u = tf.layers.dense(inputs, 
