@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def attention(inputs, attention_size, time_major=False, return_alphas=False):
+def attention(inputs, attention_size, nwords, time_major=False, return_alphas=False):
     #    u = tf.layers.dense(inputs, 
     #                         attention_size, 
     #                         activation=tf.tanh, 
