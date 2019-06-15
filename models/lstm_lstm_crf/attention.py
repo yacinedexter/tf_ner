@@ -28,11 +28,17 @@ def attention(inputs, attention_size, nwords, time_major=False, return_alphas=Fa
     # For each of the timestamps its vector of size A from `u` is reduced with `u_omega` vector
     #uu = tf.tensordot(u, u_omega, axes=1, name='uu')  # (B,T,A)*(A)=(B,T) shape
     alphas = tf.nn.softmax(u, name='alphas')         # (B,T,T) shape
-    # Output of (Bi-)RNN is reduced with attention vector; the result has (B,T,D) * (B,T,T) = (B,T,D) shape
-    output = tf.reduce_sum(inputs* tf.expand_dims(alphas, -1), 1)
+    # Output of (Bi-)RNN is reduced with attention vector; the result has (B,T,D) * (B,T,1) = (B,T,D) shape
+    max_l = tf.reduce_max(nwords)
+    alphas = tf.split(alphas, max_l, axis=1) #(B,T) * T times
+    outputs = []
+    for a in alphas:
+        outputs.append(tf.reduce_sum(inputs*tf.expand_dims(a,-1),1)) #(B,D)
+        
+    outputs = tf.stack(outputs, axis=1) # (B,T,D)
 
 
     if not return_alphas:
-        return output
+        return outputs
     else:
-    	return output, alphas
+    	return outputs, alphas
