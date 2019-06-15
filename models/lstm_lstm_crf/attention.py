@@ -48,7 +48,8 @@ def attention(inputs, attention_size, nwords, time_major=False, return_alphas=Fa
         return gen_math_ops._range(0, rank(x), 1)
     
     nwords = tf.convert_to_tensor(nwords)
-    #max_l = gen_math_ops._max(nwords,_all_dimensions(nwords))
+    max_l = gen_math_ops._max(nwords,_all_dimensions(nwords))
+    max_l = tf.convert_to_tensor(max_l)
     alphas = tf.split(alphas, nwords, axis=1) #(B,T) * T times
     outputs = []
     for a in alphas:
