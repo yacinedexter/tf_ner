@@ -29,7 +29,21 @@ def attention(inputs, attention_size, nwords, time_major=False, return_alphas=Fa
     #uu = tf.tensordot(u, u_omega, axes=1, name='uu')  # (B,T,A)*(A)=(B,T) shape
     alphas = tf.nn.softmax(u, name='alphas')         # (B,T,T) shape
     # Output of (Bi-)RNN is reduced with attention vector; the result has (B,T,D) * (B,T,1) = (B,T,D) shape
-    max_l = tf.reduce_max(nwords)
+    
+    def _all_dimensions(x):
+        """Returns a 1D-tensor listing all dimensions in x."""
+        # Fast path: avoid creating Rank and Range ops if ndims is known.
+        if isinstance(x, ops.Tensor) and x.get_shape().ndims is not None:
+            return constant_op.constant(
+                np.arange(x.get_shape().ndims), dtype=dtypes.int32)
+        if (isinstance(x, sparse_tensor.SparseTensor) and
+            x.dense_shape.get_shape().is_fully_defined()):
+            r = x.dense_shape.get_shape().dims[0].value  # sparse.dense_shape is 1-D.
+            return constant_op.constant(np.arange(r), dtype=dtypes.int32)
+        # Otherwise, we rely on `range` and `rank` to do the right thing at runtime.
+        return gen_math_ops._range(0, rank(x), 1)
+    
+    max_l = gen_math_ops._max(nwords,_all_dimensions(nwords))
     alphas = tf.split(alphas, max_l, axis=1) #(B,T) * T times
     outputs = []
     for a in alphas:
