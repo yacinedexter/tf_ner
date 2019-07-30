@@ -11,7 +11,6 @@ import sys
 import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
-from attention import attention
 
 DATADIR = '../../data/example'
 
@@ -110,7 +109,7 @@ def model_fn(features, labels, mode, params):
     _, (_, output_bw) = lstm_cell_bw(t, dtype=tf.float32,
                                      sequence_length=tf.reshape(nchars, [-1]))
     output = tf.concat([output_fw, output_bw], axis=-1)
-    char_embeddings = tf.reshape(output, [-1, dim_words, 2*params['char_lstm_size']])
+    char_embeddings = tf.reshape(output, [-1, dim_words, 50])
 
     # Word Embeddings
     word_ids = vocab_words.lookup(words)
@@ -133,10 +132,6 @@ def model_fn(features, labels, mode, params):
     output = tf.concat([output_fw, output_bw], axis=-1)
     output = tf.transpose(output, perm=[1, 0, 2])
     output = tf.layers.dropout(output, rate=dropout, training=training)
-    
-    #attention
-    with tf.name_scope('Attention_layer'):
-    	output = attention(output, params['lstm_size']*2, nwords, time_major=False, return_alphas=False)
 
     # CRF
     logits = tf.layers.dense(output, num_tags)
@@ -193,7 +188,7 @@ if __name__ == '__main__':
         'epochs': 25,
         'batch_size': 20,
         'buffer': 15000,
-        'char_lstm_size': 50,
+        'char_lstm_size': 25,
         'lstm_size': 100,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
@@ -217,8 +212,8 @@ if __name__ == '__main__':
     cfg = tf.estimator.RunConfig(save_checkpoints_secs=120)
     estimator = tf.estimator.Estimator(model_fn, 'results/model', cfg, params)
     Path(estimator.eval_dir()).mkdir(parents=True, exist_ok=True)
-    hook = tf.estimator.experimental.stop_if_higher_hook(
-        estimator,'f1', 500, min_steps=8000, run_every_secs=120)
+    hook = tf.contrib.estimator.stop_if_no_increase_hook(
+        estimator, 'f1', 500, min_steps=8000, run_every_secs=120)
     train_spec = tf.estimator.TrainSpec(input_fn=train_inpf, hooks=[hook])
     eval_spec = tf.estimator.EvalSpec(input_fn=eval_inpf, throttle_secs=120)
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
