@@ -14,7 +14,7 @@ import tensorflow_hub as hub
 import numpy as np
 import tensorflow as tf
 from tf_metrics import precision, recall, f1
-
+from elmo import weight_layers
 
 DATADIR = '../../data/example'
 
