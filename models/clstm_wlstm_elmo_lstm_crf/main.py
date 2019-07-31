@@ -122,12 +122,41 @@ def model_fn(features, labels, mode, params):
     variable = tf.Variable(variable, dtype=tf.float32, trainable=False)
     word_embeddings = tf.nn.embedding_lookup(variable, word_ids)
 
-    # Concatenate Word and Char Embeddings
-    embeddings = tf.concat([word_embeddings, char_embeddings], axis=-1)
-    embeddings = tf.layers.dropout(embeddings, rate=dropout, training=training)
+    word_embeddings = tf.layers.dropout(word_embeddings, rate=dropout, training=training)
+    
+    
+    # LSTM for glove
+    t = tf.transpose(word_embeddings, perm=[1, 0, 2])  # Need time-major
+    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['glstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['glstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
+    output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=nwords)
+    output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=nwords)
+    output = tf.concat([output_fw, output_bw], axis=-1)
+    output = tf.transpose(output, perm=[1, 0, 2])
+    #output = tf.layers.dropout(output, rate=dropout, training=training)
+
+    
+    layers = []
+    layers.append(char_embeddings)
+    layers.append(output)
+    
+    lm_embeddings = tf.concat(
+                              [tf.expand_dims(t, axis=1) for t in layers], axis=1)
+    
+    weights = tf.sequence_mask(nwords)
+    
+
+    bilm_ops = {'lm_embeddings':lm_embeddings,
+                'mask': weights}
+    
+    weight_sum = weight_layers(
+        'elmo_input', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
+                                     
+    output = tf.layers.dropout(weight_sum['weighted_op'], rate=dropout, training=training)    
 
     # LSTM 1
-    t = tf.transpose(embeddings, perm=[1, 0, 2])  # Need time-major
+    t = tf.transpose(output, perm=[1, 0, 2])  # Need time-major
     lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
@@ -216,8 +245,9 @@ if __name__ == '__main__':
         'epochs': 25,
         'batch_size': 32,
         'buffer': 15000,
-        'char_lstm_size': 50,
-        'lstm_size': 100,
+        'char_lstm_size': 150,
+        'glstm_size': 150,
+        'lstm_size': 200,
         'lstm2_size': 500,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
