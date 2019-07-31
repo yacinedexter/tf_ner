@@ -189,7 +189,7 @@ if __name__ == '__main__':
         'batch_size': 32,
         'buffer': 15000,
         'char_lstm_size': 100,
-        'lstm_size': 200,
+        'lstm_size': 150,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
