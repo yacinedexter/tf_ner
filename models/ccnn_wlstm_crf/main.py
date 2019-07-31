@@ -180,7 +180,7 @@ if __name__ == '__main__':
         'epochs': 25,
         'batch_size': 32,
         'buffer': 15000,
-        'filters': 100,
+        'filters': 50,
         'kernel_size': 3,
         'lstm_size': 150,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
