@@ -248,7 +248,7 @@ if __name__ == '__main__':
         'char_lstm_size': 100,
         'glstm_size': 100,
         'lstm_size': 150,
-        'lstm2_size': 400,
+        'lstm2_size': 500,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
