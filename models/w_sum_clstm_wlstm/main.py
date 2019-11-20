@@ -205,9 +205,9 @@ def model_fn(features, labels, mode, params):
 if __name__ == '__main__':
     # Params
     params = {
-        'dim': 50,
+        'dim': 300,
         'dim_chars': 100,
-        'dropout': 0.5,
+        'dropout': 0.1,
         'num_oov_buckets': 1,
         'epochs': 25,
         'batch_size': 32,
