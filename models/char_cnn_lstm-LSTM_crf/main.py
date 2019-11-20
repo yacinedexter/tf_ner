@@ -204,7 +204,7 @@ if __name__ == '__main__':
     params = {
         'dim': 300,#dimension word embedding glove
         'dim_chars': 100,#dimension char enbedding (char lstm input)
-        'dropout': 0.5,
+        'dropout': 0.1,
         'num_oov_buckets': 1,#to give index for out of vocabulary
         'epochs': 25,
         'batch_size': 32,
