@@ -196,7 +196,7 @@ def model_fn(features, labels, mode, params):
                 mode, loss=loss, eval_metric_ops=metrics)
 
         elif mode == tf.estimator.ModeKeys.TRAIN:
-            train_op = tf.train.ProximalAdagradOptimizer(learning_rate=0.001).minimize(
+            train_op = tf.train.ProximalGradientDescentOptimizer(learning_rate=0.001).minimize(
                 loss, global_step=tf.train.get_or_create_global_step())
             return tf.estimator.EstimatorSpec(
                 mode, loss=loss, train_op=train_op)
