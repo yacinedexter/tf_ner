@@ -193,7 +193,7 @@ def model_fn(features, labels, mode, params):
                 mode, loss=loss, eval_metric_ops=metrics)
 
         elif mode == tf.estimator.ModeKeys.TRAIN:#training
-            train_op = tf.train.MomentumOptimizer(learning_rate=0.001, momentum=0.5).minimize(
+            train_op = tf.train.GradientDescentOptimizer(learning_rate=0.001).minimize(
                 loss, global_step=tf.train.get_or_create_global_step())#adam optimizer operation to optimize the loss, global_step: Optional Variable to increment by one after the variables have been updated.
             return tf.estimator.EstimatorSpec(
                 mode, loss=loss, train_op=train_op)
@@ -207,7 +207,7 @@ if __name__ == '__main__':
         'dropout': 0.5,
         'num_oov_buckets': 1,#to give index for out of vocabulary
         'epochs': 50,
-        'batch_size': 32,
+        'batch_size': 1,
         'filters': 50,
         'kernel_size': 3,        
         'buffer': 15000,#buffer_size: A tf.int64 scalar tf.Tensor, representing the number of elements from this dataset from which the new dataset will sample.
