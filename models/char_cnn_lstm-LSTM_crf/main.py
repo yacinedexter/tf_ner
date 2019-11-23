@@ -206,7 +206,7 @@ if __name__ == '__main__':
         'dim_chars': 100,#dimension char enbedding (char lstm input)
         'dropout': 0.5,
         'num_oov_buckets': 1,#to give index for out of vocabulary
-        'epochs': 25,
+        'epochs': 50,
         'batch_size': 32,
         'filters': 50,
         'kernel_size': 3,        
