@@ -196,7 +196,7 @@ def model_fn(features, labels, mode, params):
                 mode, loss=loss, eval_metric_ops=metrics)
 
         elif mode == tf.estimator.ModeKeys.TRAIN:
-            train_op = tf.train.AdamOptimizer().minimize(
+            train_op = tf.train.AdamOptimizer(learning_rate=0.01).minimize(
                 loss, global_step=tf.train.get_or_create_global_step())
             return tf.estimator.EstimatorSpec(
                 mode, loss=loss, train_op=train_op)
@@ -205,12 +205,12 @@ def model_fn(features, labels, mode, params):
 if __name__ == '__main__':
     # Params
     params = {
-        'dim': 100,
+        'dim': 300,
         'dim_chars': 100,
         'dropout': 0.5,
         'num_oov_buckets': 1,
         'epochs': 25,
-        'batch_size': 16,
+        'batch_size': 32,
         'buffer': 15000,
         'char_lstm_size': 200,
         'lstm_size': 200,
