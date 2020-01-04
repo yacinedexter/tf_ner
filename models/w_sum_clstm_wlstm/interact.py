@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from main import model_fn
 
-LINE = 'Spanish police will breathalyse fans at the gates of the Santiago Bernabeu stadium and ban drunk supporters from Saturday \'s big Real Madrid-Barcelona game , the Madrid daily El Mundo said on Friday .'
+LINE = 'Spanish police will breathalyse fans at the gates of the Santiago Bernabeu Stadium and ban drunk supporters from Saturday \'s big Real Madrid-Barcelona game , the Madrid daily El Mundo said on Friday .'
 DATADIR = '../../data/example'
 PARAMS = './results/params.json'
 MODELDIR = './results/model'
