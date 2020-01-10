@@ -140,7 +140,7 @@ def model_fn(features, labels, mode, params):
     
     
     layers = []
-    layers.append(char_embeddings)
+    layers.append(embeddings)
     layers.append(output)
     
     lm_embeddings = tf.concat(
@@ -210,10 +210,10 @@ if __name__ == '__main__':
         'dropout': 0.5,
         'num_oov_buckets': 1,
         'epochs': 25,
-        'batch_size': 32,
+        'batch_size': 8,
         'buffer': 15000,
-        'char_lstm_size': 200,
-        'lstm_size': 200,
+        'char_lstm_size': 100,
+        'lstm_size': 250,
         'words': str(Path(DATADIR, 'vocab.words.txt')),
         'chars': str(Path(DATADIR, 'vocab.chars.txt')),
         'tags': str(Path(DATADIR, 'vocab.tags.txt')),
