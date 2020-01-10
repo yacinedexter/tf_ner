@@ -136,7 +136,7 @@ def model_fn(features, labels, mode, params):
     
     
     layers = []
-    layers.append(embeddings)
+    layers.append(char_embeddings)
     layers.append(output)
     
     lm_embeddings = tf.concat(
