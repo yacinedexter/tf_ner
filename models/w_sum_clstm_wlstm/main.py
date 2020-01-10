@@ -1,7 +1,3 @@
-"""GloVe Embeddings + chars bi-LSTM + bi-LSTM + CRF"""
-
-__author__ = "Guillaume Genthial"
-
 import functools
 import json
 import logging
