@@ -156,7 +156,7 @@ def model_fn(features, labels, mode, params):
     output3 = tf.layers.dropout(output3, rate=dropout, training=training)      
 
     # CRF
-    logits = tf.layers.dense(output, num_tags)
+    logits = tf.layers.dense(output3, num_tags)
     crf_params = tf.get_variable("crf", [num_tags, num_tags], dtype=tf.float32)
     pred_ids, _ = tf.contrib.crf.crf_decode(logits, crf_params, nwords)
 
