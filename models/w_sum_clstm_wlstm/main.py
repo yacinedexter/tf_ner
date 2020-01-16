@@ -158,12 +158,12 @@ def model_fn(features, labels, mode, params):
     
     
     # LSTM2
-    output = tf.transpose(output, perm=[1, 0, 2])  # Need time-major
+    output1 = tf.transpose(output, perm=[1, 0, 2])  # Need time-major
     lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
-    output_fw, _ = lstm_cell_fw(output, dtype=tf.float32, sequence_length=nwords)
-    output_bw, _ = lstm_cell_bw(output, dtype=tf.float32, sequence_length=nwords)
+    output_fw, _ = lstm_cell_fw(output1, dtype=tf.float32, sequence_length=nwords)
+    output_bw, _ = lstm_cell_bw(output1, dtype=tf.float32, sequence_length=nwords)
     output2 = tf.concat([output_fw, output_bw], axis=-1)
     output2 = tf.transpose(output2, perm=[1, 0, 2])
     #output = tf.layers.dropout(output, rate=dropout, training=training)
@@ -185,23 +185,23 @@ def model_fn(features, labels, mode, params):
     weight_sum = weight_layers(
         'elmo_input2', bilm_ops, l2_coef=1.0, do_layer_norm=True, use_top_only=False)    
                                      
-    output2 = tf.layers.dropout(weight_sum['weighted_op'], rate=dropout, training=training)       
+    output_2 = tf.layers.dropout(weight_sum['weighted_op'], rate=dropout, training=training)       
     
     
     # LSTM3
-    output2 = tf.transpose(output2, perm=[1, 0, 2])  # Need time-major
+    output2 = tf.transpose(output_2, perm=[1, 0, 2])  # Need time-major
     lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
     lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
-    output_fw, _ = lstm_cell_fw(output2, dtype=tf.float32, sequence_length=nwords)
-    output_bw, _ = lstm_cell_bw(output2, dtype=tf.float32, sequence_length=nwords)
+    output_fw, _ = lstm_cell_fw(output_2, dtype=tf.float32, sequence_length=nwords)
+    output_bw, _ = lstm_cell_bw(output_2, dtype=tf.float32, sequence_length=nwords)
     output3 = tf.concat([output_fw, output_bw], axis=-1)
     output3 = tf.transpose(output3, perm=[1, 0, 2])
     #output = tf.layers.dropout(output, rate=dropout, training=training)
     
     
     layers = []
-    layers.append(output2)
+    layers.append(output_2)
     layers.append(output3)
     
     lm_embeddings = tf.concat(
