@@ -132,6 +132,28 @@ def model_fn(features, labels, mode, params):
     output = tf.concat([output_fw, output_bw], axis=-1)
     output = tf.transpose(output, perm=[1, 0, 2])
     output = tf.layers.dropout(output, rate=dropout, training=training)
+    
+    # LSTM2
+    output = tf.transpose(output, perm=[1, 0, 2])  # Need time-major
+    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
+    output_fw, _ = lstm_cell_fw(output, dtype=tf.float32, sequence_length=nwords)
+    output_bw, _ = lstm_cell_bw(output, dtype=tf.float32, sequence_length=nwords)
+    output2 = tf.concat([output_fw, output_bw], axis=-1)
+    output2 = tf.transpose(output2, perm=[1, 0, 2])
+    output2 = tf.layers.dropout(output2, rate=dropout, training=training)    
+    
+    # LSTM2
+    output2 = tf.transpose(output2, perm=[1, 0, 2])  # Need time-major
+    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(params['lstm_size'])
+    lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
+    output_fw, _ = lstm_cell_fw(output2, dtype=tf.float32, sequence_length=nwords)
+    output_bw, _ = lstm_cell_bw(output2, dtype=tf.float32, sequence_length=nwords)
+    output3 = tf.concat([output_fw, output_bw], axis=-1)
+    output3 = tf.transpose(output3, perm=[1, 0, 2])
+    output3 = tf.layers.dropout(output3, rate=dropout, training=training)      
 
     # CRF
     logits = tf.layers.dense(output, num_tags)
